@@ -1,0 +1,30 @@
+name: Simple CI Test
+
+on: [push]
+
+jobs:
+  simple-test:
+    name: "Simple Test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      
+      - name: Test flake syntax
+        run: |
+          echo "Testing flake syntax..."
+          nix flake check --no-build
+          echo "✅ Flake syntax is valid"
+      
+      - name: Test package evaluation
+        run: |
+          echo "Testing package evaluation..."
+          nix eval .#packages.x86_64-linux.clewdr.name
+          echo "✅ Package evaluation works"
