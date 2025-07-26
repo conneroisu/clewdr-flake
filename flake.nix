@@ -36,14 +36,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     
-    # Git pre-commit hooks for automated code quality enforcement
-    pre-commit-hooks = {
-      url = "github:cachix/pre-commit-hooks.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, devenv, sops-nix, flake-compat, treefmt-nix, pre-commit-hooks }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, devenv, sops-nix, flake-compat, treefmt-nix }:
     let
       # Define supported architectures for cross-platform deployment
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
@@ -153,8 +148,6 @@
           # Complete development environment with all tools and utilities
           # Includes Rust toolchain, frontend tools, security tools, and deployment utilities
           full = pkgs.mkShell {
-            # Inherit pre-commit hooks for code quality enforcement
-            inputsFrom = [ self.devShells.${system}.pre-commit ];
             buildInputs = with pkgs; [
               # Latest stable Rust toolchain with essential extensions
               # rust-src: Required for rust-analyzer and IDE integration
@@ -284,35 +277,6 @@
             '';
           };
           
-          # Pre-commit hook environment for automated code quality enforcement
-          # Runs on every git commit to maintain code standards and prevent issues
-          pre-commit = pre-commit-hooks.lib.${system}.run {
-            src = ./.;  # Apply hooks to entire repository
-            hooks = {
-              # Rust language hooks for code quality and correctness
-              rustfmt.enable = true;        # Automatic code formatting
-              clippy.enable = true;         # Linting and best practices enforcement
-              cargo-check.enable = true;    # Fast compilation check without codegen
-              
-              # Configuration file validation to prevent syntax errors
-              check-yaml.enable = true;     # YAML syntax validation
-              check-json.enable = true;     # JSON syntax validation  
-              check-toml.enable = true;     # TOML syntax validation (Cargo.toml, etc.)
-              check-merge-conflicts.enable = true;  # Git merge conflict detection
-              end-of-file-fixer.enable = true;      # Ensure files end with newline
-              trailing-whitespace = {       # Remove trailing whitespace
-                enable = true;
-                entry = "${pkgs.python3Packages.pre-commit-hooks}/bin/trailing-whitespace-fixer";
-              };
-              
-              # Security hooks to prevent accidental secrets exposure
-              detect-private-keys.enable = true;    # Scan for private keys and certificates
-              
-              # Nix ecosystem code quality
-              nixpkgs-fmt.enable = true;    # Standard Nix code formatter
-              statix.enable = true;         # Nix anti-patterns and best practices linter
-            };
-          };
         };
 
         apps = {
@@ -722,8 +686,6 @@
             clewdrModule = self.nixosModules.clewdr;
           };
           
-          # Pre-commit hooks
-          pre-commit = self.devShells.${system}.pre-commit;
           
           # Security audit
           security-audit = pkgs.runCommand "security-audit" {

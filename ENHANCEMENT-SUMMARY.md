@@ -7,7 +7,7 @@
 - **sops-nix**: Secure secrets management with age/GPG encryption
 - **flake-compat**: Backward compatibility for non-flake users
 - **treefmt-nix**: Code formatting and linting integration
-- **pre-commit-hooks**: Automated code quality checks
+- **pre-commit-hooks**: (Removed - using direct cargo fmt/clippy instead)
 
 ### 🐳 Container & Orchestration Support
 - **Docker Images**: Layered and OCI-compatible container builds
@@ -30,12 +30,11 @@ Comprehensive toolset including:
 #### 2. Minimal Environment (`nix develop .#minimal`)
 Essential tools only for lightweight development
 
-#### 3. Pre-commit Environment (`nix develop .#pre-commit`)
-Automated code quality with hooks for:
-- Rust formatting and linting
-- YAML/JSON/TOML validation
-- Security scanning
-- Nix formatting
+#### 3. Pre-commit Environment (Removed)
+Pre-commit hooks were removed for compatibility. Use:
+- `cargo fmt` for Rust formatting
+- `cargo clippy` for linting
+- `nixpkgs-fmt` for Nix formatting
 
 ### 🎯 New Applications
 
@@ -92,12 +91,12 @@ Cargo-deny configuration for:
 - Security vulnerability detection
 - Dependency policy enforcement
 
-#### 2. .pre-commit-config.yaml
-Pre-commit hooks for:
-- Rust code quality (fmt, clippy, audit)
-- File format validation
-- Security scanning
-- Markdown linting
+#### 2. Code Quality (Removed .pre-commit-config.yaml)
+Use manual commands for code quality:
+- `cargo fmt` for Rust formatting
+- `cargo clippy` for Rust linting  
+- `nixpkgs-fmt` for Nix formatting
+- `cargo audit` for security scanning
 
 #### 3. Kubernetes Manifests (k8s/)
 - **deployment.yaml**: Production deployment with security hardening
@@ -216,7 +215,7 @@ kubectl port-forward svc/clewdr-service 8080:80  # Local access
 ### Development Shells (`nix develop .#<shell>`)
 - `full` - Complete development environment (default)
 - `minimal` - Essential tools only
-- `pre-commit` - Code quality environment
+# `pre-commit` - (Removed for compatibility)
 
 ### Checks (`nix build .#checks.x86_64-linux.<check>`)
 - `build` - Package build validation
@@ -224,7 +223,7 @@ kubectl port-forward svc/clewdr-service 8080:80  # Local access
 - `performance-test` - Performance validation
 - `security-audit` - Security scanning
 - `docs-build` - Documentation building
-- `pre-commit` - Code quality checks
+# `pre-commit` - (Removed for compatibility)
 - `container-build` - Container image build validation
 - `dev-env-check` - Development environment validation
 - `integration-test` - Integration testing framework validation

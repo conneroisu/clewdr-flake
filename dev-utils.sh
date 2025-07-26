@@ -74,9 +74,10 @@ dev_test() {
     log_info "3. Running security audit..."
     nix run .#security-audit
     
-    # Code quality enforcement through pre-commit hooks
-    log_info "4. Running pre-commit hooks..."
-    nix develop .#pre-commit --command pre-commit run --all-files || true
+    # Code quality enforcement through cargo fmt and clippy
+    log_info "4. Running code quality checks..."
+    cargo fmt --all
+    cargo clippy --all-targets --all-features -- -D warnings
     
     log_success "All tests completed!"
 }
@@ -114,8 +115,9 @@ dev_lint() {
     log_info "3. Formatting Nix files..."
     nixpkgs-fmt *.nix || nix shell nixpkgs#nixpkgs-fmt --command nixpkgs-fmt *.nix
     
-    log_info "4. Running pre-commit hooks..."
-    nix develop .#pre-commit --command pre-commit run --all-files || true
+    log_info "4. Running code quality checks..."
+    cargo fmt --all
+    cargo clippy --all-targets --all-features -- -D warnings
     
     log_success "Linting completed!"
 }

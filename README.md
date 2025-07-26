@@ -8,7 +8,7 @@ A comprehensive production-ready NixOS flake for [ClewdR](https://github.com/Xer
 - 🐳 **Container Support** - Docker, Kubernetes, and multi-architecture builds  
 - 📊 **Development Tools** - Full development environment with profiling and testing
 - 🔒 **Production Ready** - Security hardening, monitoring, and automated deployment
-- 🛠️ **Developer Experience** - IDE integration, pre-commit hooks, and automated workflows
+- 🛠️ **Developer Experience** - IDE integration, code formatting, and automated workflows
 
 ## 🚀 Quick Start
 
@@ -290,7 +290,7 @@ nix develop                      # Complete toolchain + all utilities
 
 # Specialized environments
 nix develop .#minimal            # Essential tools only
-nix develop .#pre-commit         # Code quality environment
+# nix develop .#pre-commit       # Code quality environment (removed for compatibility)
 ```
 
 ### File Structure
@@ -307,7 +307,6 @@ nix develop .#pre-commit         # Code quality environment
 ├── 📁 Development & Testing
 │   ├── tests/                   # NixOS VM and performance tests
 │   ├── .vscode/                 # IDE configuration and debugging
-│   ├── .pre-commit-config.yaml  # Code quality automation
 │   └── deny.toml                # Dependency policy enforcement
 ├── 📁 Documentation
 │   ├── README.md                # Main documentation (this file)
