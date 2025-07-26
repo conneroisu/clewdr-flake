@@ -1,6 +1,29 @@
-# Ignore build outputs from performing a nix-build or `nix build` command
+# Nix build outputs
 result
 result-*
+.direnv/
 
-# Ignore automatically generated direnv output
-.direnv
+# Development artifacts  
+*.patch.bak
+*.orig
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Backup files
+*.backup*
+*.bak
+
+# Build artifacts that shouldn't be committed
+build-artifacts/cargo-patch.*

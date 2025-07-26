@@ -64,7 +64,7 @@
 
         checks = {
           build = self.packages.${system}.clewdr;
-          nixos-vm-test = import ./nixos-test.nix {
+          nixos-vm-test = import ./tests/nixos-test.nix {
             inherit pkgs;
             clewdrPackage = self.packages.${system}.clewdr;
             clewdrModule = self.nixosModules.clewdr;

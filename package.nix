@@ -16,7 +16,7 @@ let
   version = "0.10.9";
 
   # Use local patched source with reqwest instead of wreq
-  src = ./clewdr-source;
+  src = ./upstream-source/clewdr-source;
 
   # For now, we'll create an empty frontend directory and skip the frontend build
   # The Rust application can work without the web UI by using the --file flag
