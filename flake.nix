@@ -64,6 +64,7 @@
 
         checks = {
           build = self.packages.${system}.clewdr;
+          nixos-vm-test = import ./nixos-test.nix { inherit pkgs; };
         };
       }
     ) // {
