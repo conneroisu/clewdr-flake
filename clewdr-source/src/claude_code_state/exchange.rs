@@ -32,22 +32,22 @@ impl<'c> AsyncHttpClient<'c> for OauthClient {
         Box::pin(async move {
             // Convert oauth2::HttpRequest to reqwest::Request
             let mut req_builder = self.client.request(
-                request.method.try_into().map_err(Box::new)?,
-                request.uri.to_string()
+                request.method().try_into().unwrap(),
+                request.uri().to_string()
             );
             
-            for (name, value) in request.headers.iter() {
+            for (name, value) in request.headers().iter() {
                 req_builder = req_builder.header(name, value);
             }
             
-            if !request.body.is_empty() {
-                req_builder = req_builder.body(request.body);
+            if !request.body().is_empty() {
+                req_builder = req_builder.body(request.body().clone());
             }
             
             let response = req_builder
                 .send()
                 .await
-                .map_err(Box::new)?;
+                .map_err(|e| HttpClientError::Reqwest(Box::new(e)))?;
 
             let mut builder = http::Response::builder().status(response.status());
 
@@ -60,7 +60,7 @@ impl<'c> AsyncHttpClient<'c> for OauthClient {
             }
 
             builder
-                .body(response.bytes().await.map_err(Box::new)?.to_vec())
+                .body(response.bytes().await.map_err(|e| HttpClientError::Reqwest(Box::new(e)))?.to_vec())
                 .map_err(HttpClientError::Http)
         })
     }
