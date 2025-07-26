@@ -1,0 +1,1589 @@
+name: Documentation Site Build and Deploy
+
+on:
+  push:
+    branches: [ main, dev ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - '*.md'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - '*.md'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even on non-main branch'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NIX_CONFIG: "access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}"
+  DOCS_SITE_URL: "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+
+jobs:
+  build-docs:
+    name: Build Documentation Site
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: clewdr-flake
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        
+    - name: Setup documentation structure
+      run: |
+        echo "📚 Setting up documentation structure..."
+        
+        # Create docs directory if it doesn't exist
+        mkdir -p docs/src
+        
+        # Initialize mdbook configuration
+        cat > docs/book.toml << 'EOF'
+        [book]
+        authors = ["ClewdR Team"]
+        title = "ClewdR Documentation"
+        description = "High-Performance LLM Proxy for Claude and Google Gemini"
+        src = "src"
+        language = "en"
+        multilingual = false
+        
+        [build]
+        build-dir = "book"
+        create-missing = true
+        use-default-preprocessors = true
+        
+        [output.html]
+        theme = "theme"
+        default-theme = "navy"
+        preferred-dark-theme = "navy"
+        git-repository-url = "https://github.com/${{ github.repository }}"
+        git-repository-icon = "fa-github"
+        edit-url-template = "https://github.com/${{ github.repository }}/edit/main/docs/{path}"
+        site-url = "${{ env.DOCS_SITE_URL }}/"
+        
+        [output.html.search]
+        enable = true
+        limit-results = 30
+        teaser-word-count = 30
+        use-boolean-and = true
+        boost-title = 2
+        boost-hierarchy = 1
+        boost-paragraph = 1
+        expand = true
+        heading-split-level = 3
+        copy-js = true
+        
+        [output.html.fold]
+        enable = true
+        level = 1
+        
+        [output.html.print]
+        enable = false
+        
+        [preprocessor.links]
+        
+        [preprocessor.index]
+        
+        EOF
+        
+    - name: Generate comprehensive documentation
+      run: |
+        echo "📝 Generating comprehensive documentation..."
+        
+        cd docs
+        
+        # Create SUMMARY.md with complete structure
+        cat > src/SUMMARY.md << 'EOF'
+        # Summary
+        
+        [Introduction](./introduction.md)
+        
+        # Getting Started
+        - [Quick Start](./quickstart.md)
+        - [Installation](./installation.md)
+        - [Configuration](./configuration.md)
+        
+        # User Guide
+        - [Basic Usage](./usage.md)
+        - [API Reference](./api.md)
+        - [Environment Variables](./environment.md)
+        - [Security](./security.md)
+        
+        # Development
+        - [Development Environment](./development.md)
+        - [Building from Source](./building.md)
+        - [Contributing](./contributing.md)
+        - [Testing](./testing.md)
+        
+        # Deployment
+        - [NixOS Module](./nixos-module.md)
+        - [Container Deployment](./containers.md)
+        - [Kubernetes](./kubernetes.md)
+        - [Production Setup](./production.md)
+        
+        # Operations
+        - [Monitoring](./monitoring.md)
+        - [Troubleshooting](./troubleshooting.md)
+        - [Performance Tuning](./performance.md)
+        - [Secrets Management](./secrets.md)
+        
+        # Reference
+        - [CLI Reference](./cli-reference.md)
+        - [Configuration Reference](./config-reference.md)
+        - [Examples](./examples.md)
+        - [Changelog](./changelog.md)
+        EOF
+        
+        # Generate introduction
+        cat > src/introduction.md << 'EOF'
+        # ClewdR Documentation
+        
+        Welcome to the ClewdR documentation! ClewdR is a high-performance LLM proxy specifically designed for Claude (Claude.ai, Claude Code) and Google Gemini (AI Studio, Vertex AI).
+        
+        ## What is ClewdR?
+        
+        ClewdR is a production-grade proxy server built with Rust that provides:
+        
+        - **10x Performance**: Significant performance improvements over script-language implementations
+        - **Minimal Resource Usage**: Single-digit MB memory usage in production
+        - **OpenAI Compatibility**: Works with existing OpenAI-compatible tools and libraries
+        - **Multi-Provider Support**: Support for both Claude and Google Gemini APIs
+        - **Web Interface**: Full-featured React web interface with multi-language support
+        - **Production Ready**: Built-in security, monitoring, and operational features
+        
+        ## Key Features
+        
+        ### Performance & Efficiency
+        - Built with Rust for maximum performance and safety
+        - Minimal memory footprint (< 10MB in production)
+        - Efficient connection pooling and request handling
+        - Intelligent caching and resource management
+        
+        ### API Compatibility
+        - OpenAI-compatible API format for easy integration
+        - Support for Claude (Anthropic) APIs
+        - Support for Google Gemini (AI Studio, Vertex AI)
+        - Automatic request/response translation between formats
+        
+        ### Developer Experience
+        - Comprehensive Nix flake for reproducible environments
+        - Full development toolkit with profiling and testing
+        - Container images for easy deployment
+        - Kubernetes manifests and Helm charts
+        - Complete CI/CD pipeline with GitHub Actions
+        
+        ### Security & Operations
+        - Built-in secrets management with sops-nix
+        - Security hardening for production deployments
+        - Comprehensive monitoring with Prometheus integration
+        - Automated security auditing and dependency scanning
+        - Multi-architecture container builds
+        
+        ## Architecture
+        
+        ClewdR consists of:
+        
+        1. **Core Proxy Engine**: High-performance Rust application that handles API requests
+        2. **Web Interface**: React-based frontend for management and monitoring
+        3. **NixOS Module**: Complete service definition for NixOS deployments
+        4. **Container Images**: Docker/OCI images for containerized deployments
+        5. **Monitoring Stack**: Prometheus metrics and alerting rules
+        
+        ## Getting Started
+        
+        The fastest way to get started with ClewdR is using Nix flakes:
+        
+        ```bash
+        # Run ClewdR directly
+        nix run github:user/clewdr-flake
+        
+        # Or enter a development environment
+        nix develop github:user/clewdr-flake
+        ```
+        
+        For other installation methods, see the [Installation Guide](./installation.md).
+        
+        ## Use Cases
+        
+        ClewdR is perfect for:
+        
+        - **Development Teams**: Providing a unified API interface for multiple LLM providers
+        - **Production Systems**: High-performance proxy for LLM-powered applications
+        - **Research**: Comparing responses across different LLM providers
+        - **Cost Optimization**: Intelligent routing and caching to reduce API costs
+        - **Compliance**: Centralized logging and monitoring for audit requirements
+        
+        ## Community & Support
+        
+        - **GitHub Repository**: [github.com/user/clewdr-flake](https://github.com/user/clewdr-flake)
+        - **Issues & Bug Reports**: Use GitHub Issues for bug reports and feature requests
+        - **Documentation**: This documentation site is continuously updated
+        - **Contributing**: See our [Contributing Guide](./contributing.md) for how to help
+        
+        ## License
+        
+        ClewdR is distributed under the terms specified in the repository. Please see the LICENSE file for details.
+        EOF
+        
+    - name: Generate installation guide
+      run: |
+        cd docs
+        
+        cat > src/installation.md << 'EOF'
+        # Installation Guide
+        
+        ClewdR can be installed and deployed in several ways depending on your needs and infrastructure.
+        
+        ## Quick Start with Nix Flakes
+        
+        The easiest way to get started is using Nix flakes:
+        
+        ```bash
+        # Run ClewdR directly (latest version)
+        nix run github:user/clewdr-flake
+        
+        # Run specific version
+        nix run github:user/clewdr-flake/v1.0.0
+        
+        # Run with custom port
+        nix run github:user/clewdr-flake -- --port 9090
+        ```
+        
+        ## Development Environment
+        
+        For development, enter the full development environment:
+        
+        ```bash
+        # Clone the repository
+        git clone https://github.com/user/clewdr-flake
+        cd clewdr-flake
+        
+        # Enter development environment
+        nix develop
+        
+        # Or use the minimal environment
+        nix develop .#minimal
+        ```
+        
+        ## NixOS System Integration
+        
+        ### Flake-based Configuration
+        
+        Add ClewdR to your NixOS flake configuration:
+        
+        ```nix
+        {
+          inputs = {
+            nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+            clewdr-flake.url = "github:user/clewdr-flake";
+          };
+        
+          outputs = { self, nixpkgs, clewdr-flake }: {
+            nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+              system = "x86_64-linux";
+              modules = [
+                clewdr-flake.nixosModules.clewdr
+                {
+                  services.clewdr = {
+                    enable = true;
+                    port = 8484;
+                    host = "0.0.0.0";
+                    environmentFile = "/run/secrets/clewdr-env";
+                  };
+                }
+              ];
+            };
+          };
+        }
+        ```
+        
+        ### Traditional Configuration
+        
+        For traditional NixOS configurations:
+        
+        ```nix
+        # In your configuration.nix
+        { config, pkgs, ... }:
+        let
+          clewdr-flake = (import (builtins.fetchTarball {
+            url = "https://github.com/user/clewdr-flake/archive/main.tar.gz";
+          }));
+        in {
+          imports = [ clewdr-flake.nixosModules.clewdr ];
+          
+          services.clewdr = {
+            enable = true;
+            port = 8484;
+            host = "0.0.0.0";
+            user = "clewdr";
+            group = "clewdr";
+            
+            # Security configuration
+            openFirewall = true;
+            
+            # Environment variables
+            environmentFile = "/etc/nixos/secrets/clewdr.env";
+          };
+        }
+        ```
+        
+        ## Container Deployment
+        
+        ### Docker
+        
+        ```bash
+        # Build container image
+        nix build .#container
+        docker load < result
+        
+        # Run container
+        docker run -d \
+          --name clewdr \
+          -p 8484:8484 \
+          -e ANTHROPIC_API_KEY=your_key_here \
+          -e GOOGLE_AI_API_KEY=your_key_here \
+          clewdr:latest
+        ```
+        
+        ### OCI-compatible Runtime (Podman)
+        
+        ```bash
+        # Build OCI image
+        nix build .#oci-image
+        podman load < result
+        
+        # Run with Podman
+        podman run -d \
+          --name clewdr \
+          -p 8484:8484 \
+          -e ANTHROPIC_API_KEY=your_key_here \
+          clewdr:oci
+        ```
+        
+        ### Multi-architecture Builds
+        
+        ```bash
+        # Build for multiple architectures
+        nix run .#build-multiarch
+        
+        # This creates images for:
+        # - x86_64-linux (AMD64)
+        # - aarch64-linux (ARM64)
+        ```
+        
+        ## Kubernetes Deployment
+        
+        ### Using Provided Manifests
+        
+        ```bash
+        # Apply Kubernetes manifests
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/ingress.yaml
+        
+        # Check deployment status
+        kubectl get pods -l app=clewdr
+        kubectl logs -f deployment/clewdr
+        ```
+        
+        ### Using Helm Chart
+        
+        ```bash
+        # Install with Helm
+        helm install clewdr k8s/helm-chart/ \
+          --set image.tag=latest \
+          --set config.anthropicApiKey=your_key_here \
+          --set config.googleApiKey=your_key_here
+        
+        # Upgrade deployment
+        helm upgrade clewdr k8s/helm-chart/
+        
+        # Uninstall
+        helm uninstall clewdr
+        ```
+        
+        ### GitOps with ArgoCD
+        
+        ```bash
+        # Apply ArgoCD application
+        kubectl apply -f gitops/argocd/application.yaml
+        
+        # Monitor deployment
+        argocd app get clewdr
+        argocd app sync clewdr
+        ```
+        
+        ## Traditional Package Managers
+        
+        ### Building from Source
+        
+        If you prefer to build from source without Nix:
+        
+        ```bash
+        # Prerequisites
+        # - Rust 1.70+
+        # - Node.js 18+
+        # - pnpm
+        
+        # Clone and build
+        git clone https://github.com/user/clewdr-flake
+        cd clewdr-flake/upstream-source/clewdr-source
+        
+        # Build Rust application
+        cargo build --release
+        
+        # Build frontend (optional)
+        cd frontend
+        pnpm install
+        pnpm build
+        cd ..
+        
+        # Run
+        ./target/release/clewdr
+        ```
+        
+        ## Configuration
+        
+        ### Environment Variables
+        
+        ClewdR is configured through environment variables:
+        
+        ```bash
+        # Required API keys
+        export ANTHROPIC_API_KEY="your_anthropic_key"
+        export GOOGLE_AI_API_KEY="your_google_key"
+        
+        # Optional configuration
+        export CLEWDR_PORT=8484
+        export CLEWDR_HOST="0.0.0.0"
+        export RUST_LOG="info"
+        ```
+        
+        ### Configuration Files
+        
+        Create a `.env` file for local development:
+        
+        ```bash
+        # Copy example configuration
+        cp .env.example .env
+        
+        # Edit with your API keys
+        editor .env
+        ```
+        
+        ### Secrets Management
+        
+        For production deployments, use secrets management:
+        
+        ```bash
+        # Initialize sops for secrets
+        nix run .#secrets init
+        
+        # Create encrypted secrets file
+        nix run .#secrets edit
+        
+        # Deploy with secrets
+        sops -d secrets.enc.yaml | source /dev/stdin
+        clewdr
+        ```
+        
+        ## Verification
+        
+        After installation, verify ClewdR is working:
+        
+        ```bash
+        # Check version
+        curl http://localhost:8484/health
+        
+        # Test API endpoint
+        curl -X POST http://localhost:8484/v1/chat/completions \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer your_api_key" \
+          -d '{
+            "model": "claude-3-sonnet",
+            "messages": [{"role": "user", "content": "Hello!"}]
+          }'
+        ```
+        
+        ## Next Steps
+        
+        - [Configuration Guide](./configuration.md) - Detailed configuration options
+        - [API Reference](./api.md) - Complete API documentation
+        - [Security Guide](./security.md) - Security best practices
+        - [Monitoring Setup](./monitoring.md) - Set up monitoring and alerting
+        EOF
+        
+    - name: Generate API documentation
+      run: |
+        cd docs
+        
+        cat > src/api.md << 'EOF'
+        # API Reference
+        
+        ClewdR provides an OpenAI-compatible API that allows seamless integration with existing tools and libraries while proxying requests to Claude and Google Gemini.
+        
+        ## Base URL
+        
+        ```
+        http://localhost:8484
+        ```
+        
+        ## Authentication
+        
+        ClewdR uses API key authentication via the `Authorization` header:
+        
+        ```bash
+        Authorization: Bearer your_api_key_here
+        ```
+        
+        ## Supported Models
+        
+        ### Claude Models (Anthropic)
+        
+        - `claude-3-opus-20240229` - Most capable model
+        - `claude-3-sonnet-20240229` - Balanced performance and speed
+        - `claude-3-haiku-20240307` - Fastest responses
+        - `claude-instant-1.2` - Legacy fast model
+        
+        ### Gemini Models (Google)
+        
+        - `gemini-pro` - Standard Gemini model
+        - `gemini-pro-vision` - Multimodal capabilities
+        - `gemini-ultra` - Most capable (when available)
+        
+        ## Endpoints
+        
+        ### Health Check
+        
+        ```http
+        GET /health
+        ```
+        
+        Returns the health status of the ClewdR service.
+        
+        **Response:**
+        ```json
+        {
+          "status": "healthy",
+          "version": "0.10.9",
+          "uptime": 3600
+        }
+        ```
+        
+        ### Chat Completions
+        
+        ```http
+        POST /v1/chat/completions
+        ```
+        
+        Create a chat completion request. Compatible with OpenAI's chat completions API.
+        
+        **Request Body:**
+        ```json
+        {
+          "model": "claude-3-sonnet-20240229",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant."
+            },
+            {
+              "role": "user", 
+              "content": "Hello! How can you help me today?"
+            }
+          ],
+          "max_tokens": 2048,
+          "temperature": 0.7,
+          "stream": false
+        }
+        ```
+        
+        **Parameters:**
+        
+        - `model` (string, required): Model to use for completion
+        - `messages` (array, required): List of messages in the conversation
+        - `max_tokens` (integer): Maximum tokens to generate (default: 2048)
+        - `temperature` (number): Sampling temperature 0-1 (default: 0.7)
+        - `stream` (boolean): Enable streaming responses (default: false)
+        - `top_p` (number): Nucleus sampling parameter (default: 1.0)
+        - `stop` (string|array): Stop sequences
+        
+        **Response:**
+        ```json
+        {
+          "id": "chatcmpl-123",
+          "object": "chat.completion",
+          "created": 1677652288,
+          "model": "claude-3-sonnet-20240229",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Hello! I'm Claude, an AI assistant. I can help you with a wide variety of tasks including writing, analysis, math, coding, creative projects, and answering questions. What would you like to work on today?"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 20,
+            "completion_tokens": 42,
+            "total_tokens": 62
+          }
+        }
+        ```
+        
+        ### Streaming Chat Completions
+        
+        ```http
+        POST /v1/chat/completions
+        Content-Type: application/json
+        
+        {
+          "model": "claude-3-sonnet-20240229",
+          "messages": [...],
+          "stream": true
+        }
+        ```
+        
+        **Response (Server-Sent Events):**
+        ```
+        data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"claude-3-sonnet","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"},"finish_reason":null}]}
+        
+        data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"claude-3-sonnet","choices":[{"index":0,"delta":{"content":"! I'm"},"finish_reason":null}]}
+        
+        data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1677652288,"model":"claude-3-sonnet","choices":[{"index":0,"delta":{"content":" Claude"},"finish_reason":null}]}
+        
+        data: [DONE]
+        ```
+        
+        ### Models List
+        
+        ```http
+        GET /v1/models
+        ```
+        
+        List available models.
+        
+        **Response:**
+        ```json
+        {
+          "object": "list",
+          "data": [
+            {
+              "id": "claude-3-opus-20240229",
+              "object": "model",
+              "created": 1677649963,
+              "owned_by": "anthropic",
+              "permission": [],
+              "root": "claude-3-opus-20240229",
+              "parent": null
+            },
+            {
+              "id": "claude-3-sonnet-20240229", 
+              "object": "model",
+              "created": 1677649963,
+              "owned_by": "anthropic",
+              "permission": [],
+              "root": "claude-3-sonnet-20240229",
+              "parent": null
+            },
+            {
+              "id": "gemini-pro",
+              "object": "model", 
+              "created": 1677649963,
+              "owned_by": "google",
+              "permission": [],
+              "root": "gemini-pro",
+              "parent": null
+            }
+          ]
+        }
+        ```
+        
+        ## Error Handling
+        
+        ClewdR returns standard HTTP status codes and error responses:
+        
+        ### Authentication Errors
+        
+        ```http
+        HTTP/1.1 401 Unauthorized
+        Content-Type: application/json
+        
+        {
+          "error": {
+            "message": "Invalid API key provided",
+            "type": "invalid_request_error",
+            "code": "invalid_api_key"
+          }
+        }
+        ```
+        
+        ### Rate Limiting
+        
+        ```http
+        HTTP/1.1 429 Too Many Requests
+        Content-Type: application/json
+        
+        {
+          "error": {
+            "message": "Rate limit exceeded",
+            "type": "rate_limit_error", 
+            "code": "rate_limit_exceeded"
+          }
+        }
+        ```
+        
+        ### Model Errors
+        
+        ```http
+        HTTP/1.1 400 Bad Request
+        Content-Type: application/json
+        
+        {
+          "error": {
+            "message": "Model 'invalid-model' not found",
+            "type": "invalid_request_error",
+            "code": "model_not_found"
+          }
+        }
+        ```
+        
+        ## Integration Examples
+        
+        ### OpenAI Python Library
+        
+        ```python
+        import openai
+        
+        # Configure to use ClewdR
+        openai.api_base = "http://localhost:8484/v1"
+        openai.api_key = "your_anthropic_or_google_api_key"
+        
+        # Use Claude via OpenAI interface
+        response = openai.ChatCompletion.create(
+            model="claude-3-sonnet-20240229",
+            messages=[
+                {"role": "user", "content": "Hello, Claude!"}
+            ]
+        )
+        
+        print(response.choices[0].message.content)
+        ```
+        
+        ### LangChain Integration
+        
+        ```python
+        from langchain.chat_models import ChatOpenAI
+        from langchain.schema import HumanMessage
+        
+        # Use ClewdR as OpenAI endpoint
+        chat = ChatOpenAI(
+            openai_api_base="http://localhost:8484/v1",
+            openai_api_key="your_api_key",
+            model_name="claude-3-sonnet-20240229"
+        )
+        
+        response = chat([HumanMessage(content="Hello!")])
+        print(response.content)
+        ```
+        
+        ### cURL Examples
+        
+        ```bash
+        # Chat completion
+        curl -X POST http://localhost:8484/v1/chat/completions \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer your_api_key" \
+          -d '{
+            "model": "claude-3-sonnet-20240229",
+            "messages": [
+              {"role": "user", "content": "What is the capital of France?"}
+            ],
+            "max_tokens": 100
+          }'
+        
+        # Streaming completion
+        curl -X POST http://localhost:8484/v1/chat/completions \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer your_api_key" \
+          -d '{
+            "model": "claude-3-sonnet-20240229", 
+            "messages": [
+              {"role": "user", "content": "Tell me a short story"}
+            ],
+            "stream": true
+          }'
+        
+        # List models
+        curl -X GET http://localhost:8484/v1/models \
+          -H "Authorization: Bearer your_api_key"
+        ```
+        
+        ## Performance Considerations
+        
+        ### Response Times
+        
+        - **Claude models**: Typically 1-3 seconds for short responses
+        - **Gemini models**: Usually sub-second for simple queries
+        - **Streaming**: Reduces perceived latency by starting response immediately
+        
+        ### Rate Limits
+        
+        ClewdR respects upstream provider rate limits:
+        
+        - **Anthropic**: Varies by plan and model
+        - **Google**: Typically 60 requests per minute for free tier
+        
+        ### Caching
+        
+        ClewdR implements intelligent caching:
+        
+        - Identical requests may return cached responses
+        - Cache duration configurable per model
+        - Disabled for streaming requests
+        
+        ## Monitoring & Observability
+        
+        ### Prometheus Metrics
+        
+        ClewdR exposes metrics at `/metrics`:
+        
+        ```bash
+        curl http://localhost:8484/metrics
+        ```
+        
+        Key metrics:
+        - `clewdr_requests_total` - Total request count by model/status
+        - `clewdr_request_duration_seconds` - Request latency histogram
+        - `clewdr_tokens_total` - Token usage by model
+        - `clewdr_cache_hits_total` - Cache performance
+        
+        ### Logging
+        
+        Configure logging level via `RUST_LOG` environment variable:
+        
+        ```bash
+        export RUST_LOG=info  # error, warn, info, debug, trace
+        ```
+        
+        ### Health Checks
+        
+        The `/health` endpoint provides detailed status:
+        
+        ```json
+        {
+          "status": "healthy",
+          "version": "0.10.9",
+          "uptime": 3600,
+          "providers": {
+            "anthropic": "available",
+            "google": "available"
+          },
+          "memory_usage": 8.5,
+          "active_connections": 12
+        }
+        ```
+        EOF
+        
+    - name: Generate configuration reference
+      run: |
+        cd docs
+        
+        cat > src/configuration.md << 'EOF'
+        # Configuration Reference
+        
+        ClewdR provides flexible configuration through environment variables, configuration files, and command-line arguments.
+        
+        ## Environment Variables
+        
+        ### Required Configuration
+        
+        ```bash
+        # API Keys (at least one required)
+        ANTHROPIC_API_KEY=your_anthropic_api_key    # For Claude models
+        GOOGLE_AI_API_KEY=your_google_api_key       # For Gemini models
+        ```
+        
+        ### Server Configuration
+        
+        ```bash
+        # Network settings
+        CLEWDR_HOST=0.0.0.0           # Bind address (default: 127.0.0.1)
+        CLEWDR_PORT=8484              # Port to listen on (default: 8484)
+        
+        # TLS/SSL (optional)
+        CLEWDR_TLS_CERT=/path/to/cert.pem    # TLS certificate file
+        CLEWDR_TLS_KEY=/path/to/key.pem      # TLS private key file
+        ```
+        
+        ### Logging Configuration
+        
+        ```bash
+        # Logging level
+        RUST_LOG=info                 # error, warn, info, debug, trace
+        
+        # Structured logging
+        CLEWDR_LOG_FORMAT=json        # json, text (default: text)
+        CLEWDR_LOG_FILE=/var/log/clewdr.log  # Log file path (optional)
+        ```
+        
+        ### Performance Tuning
+        
+        ```bash
+        # Connection pooling
+        CLEWDR_MAX_CONNECTIONS=100    # Maximum concurrent connections
+        CLEWDR_POOL_SIZE=10           # HTTP client pool size
+        
+        # Timeouts
+        CLEWDR_REQUEST_TIMEOUT=30     # Request timeout in seconds
+        CLEWDR_CONNECT_TIMEOUT=10     # Connection timeout in seconds
+        
+        # Cache configuration
+        CLEWDR_CACHE_SIZE=1000        # In-memory cache entries
+        CLEWDR_CACHE_TTL=300          # Cache TTL in seconds
+        ```
+        
+        ### Security Settings
+        
+        ```bash
+        # API key validation
+        CLEWDR_REQUIRE_AUTH=true      # Require API key authentication
+        CLEWDR_ALLOWED_ORIGINS=*      # CORS allowed origins
+        
+        # Rate limiting
+        CLEWDR_RATE_LIMIT=60          # Requests per minute per IP
+        CLEWDR_BURST_LIMIT=10         # Burst requests allowed
+        ```
+        
+        ## Command Line Arguments
+        
+        ```bash
+        clewdr [OPTIONS]
+        
+        OPTIONS:
+            -p, --port <PORT>          Port to listen on [env: CLEWDR_PORT] [default: 8484]
+            -h, --host <HOST>          Host to bind to [env: CLEWDR_HOST] [default: 127.0.0.1]
+            -c, --config <CONFIG>      Configuration file path
+            -v, --verbose              Increase logging verbosity
+            -q, --quiet                Decrease logging verbosity
+            --version                  Show version information
+            --help                     Show help information
+        
+        EXAMPLES:
+            clewdr --port 9090 --host 0.0.0.0
+            clewdr --config /etc/clewdr/config.toml
+            clewdr --verbose
+        ```
+        
+        ## Configuration File
+        
+        ClewdR can be configured using a TOML configuration file:
+        
+        ```toml
+        # /etc/clewdr/config.toml
+        
+        [server]
+        host = "0.0.0.0"
+        port = 8484
+        
+        [tls]
+        cert_file = "/etc/ssl/certs/clewdr.crt"
+        key_file = "/etc/ssl/private/clewdr.key"
+        
+        [logging]
+        level = "info"
+        format = "json"
+        file = "/var/log/clewdr.log"
+        
+        [performance]
+        max_connections = 100
+        pool_size = 10
+        request_timeout = 30
+        connect_timeout = 10
+        
+        [cache]
+        size = 1000
+        ttl = 300
+        
+        [security]
+        require_auth = true
+        allowed_origins = ["https://example.com"]
+        rate_limit = 60
+        burst_limit = 10
+        
+        [providers.anthropic]
+        api_key = "${ANTHROPIC_API_KEY}"
+        base_url = "https://api.anthropic.com"
+        
+        [providers.google]
+        api_key = "${GOOGLE_AI_API_KEY}"
+        base_url = "https://generativelanguage.googleapis.com"
+        ```
+        
+        ## NixOS Module Configuration
+        
+        When using the NixOS module, configuration is done through the NixOS configuration system:
+        
+        ```nix
+        services.clewdr = {
+          enable = true;
+          
+          # Network configuration
+          host = "0.0.0.0";
+          port = 8484;
+          openFirewall = true;
+          
+          # User and security
+          user = "clewdr";
+          group = "clewdr";
+          
+          # Environment file for secrets
+          environmentFile = "/run/secrets/clewdr-env";
+          
+          # Performance settings
+          settings = {
+            performance = {
+              max_connections = 100;
+              pool_size = 10;
+              request_timeout = 30;
+            };
+            
+            cache = {
+              size = 1000;
+              ttl = 300;
+            };
+            
+            security = {
+              require_auth = true;
+              rate_limit = 60;
+            };
+          };
+          
+          # Additional environment variables
+          environment = {
+            RUST_LOG = "info";
+            CLEWDR_LOG_FORMAT = "json";
+          };
+        };
+        
+        # Secrets management with sops-nix
+        sops.secrets.clewdr-env = {
+          sopsFile = ./secrets.yaml;
+          owner = config.services.clewdr.user;
+        };
+        ```
+        
+        ## Container Configuration
+        
+        ### Docker Environment File
+        
+        ```bash
+        # .env file for Docker
+        ANTHROPIC_API_KEY=your_anthropic_key
+        GOOGLE_AI_API_KEY=your_google_key
+        CLEWDR_HOST=0.0.0.0
+        CLEWDR_PORT=8484
+        RUST_LOG=info
+        ```
+        
+        ### Docker Compose
+        
+        ```yaml
+        version: '3.8'
+        services:
+          clewdr:
+            image: clewdr:latest
+            ports:
+              - "8484:8484"
+            environment:
+              - CLEWDR_HOST=0.0.0.0
+              - RUST_LOG=info
+            env_file:
+              - .env
+            volumes:
+              - ./config.toml:/etc/clewdr/config.toml:ro
+            restart: unless-stopped
+            healthcheck:
+              test: ["CMD", "curl", "-f", "http://localhost:8484/health"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+        ```
+        
+        ## Kubernetes Configuration
+        
+        ### ConfigMap
+        
+        ```yaml
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: clewdr-config
+        data:
+          config.toml: |
+            [server]
+            host = "0.0.0.0"
+            port = 8484
+            
+            [logging]
+            level = "info"
+            format = "json"
+            
+            [performance]
+            max_connections = 100
+            pool_size = 10
+        ```
+        
+        ### Secret
+        
+        ```yaml
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: clewdr-secrets
+        type: Opaque
+        stringData:
+          ANTHROPIC_API_KEY: your_anthropic_key
+          GOOGLE_AI_API_KEY: your_google_key
+        ```
+        
+        ### Deployment
+        
+        ```yaml
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: clewdr
+        spec:
+          replicas: 3
+          selector:
+            matchLabels:
+              app: clewdr
+          template:
+            metadata:
+              labels:
+                app: clewdr
+            spec:
+              containers:
+              - name: clewdr
+                image: clewdr:latest
+                ports:
+                - containerPort: 8484
+                env:
+                - name: CLEWDR_HOST
+                  value: "0.0.0.0"
+                - name: RUST_LOG
+                  value: "info"
+                envFrom:
+                - secretRef:
+                    name: clewdr-secrets
+                volumeMounts:
+                - name: config
+                  mountPath: /etc/clewdr
+                  readOnly: true
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8484
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                readinessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8484
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+              volumes:
+              - name: config
+                configMap:
+                  name: clewdr-config
+        ```
+        
+        ## Configuration Validation
+        
+        ClewdR validates configuration on startup and provides detailed error messages:
+        
+        ```bash
+        # Test configuration
+        clewdr --config /etc/clewdr/config.toml --check
+        
+        # Validate environment
+        clewdr --validate-env
+        ```
+        
+        ## Advanced Configuration
+        
+        ### Custom Provider Endpoints
+        
+        ```toml
+        [providers.anthropic]
+        api_key = "${ANTHROPIC_API_KEY}"
+        base_url = "https://api.anthropic.com"
+        model_mapping = { "claude-3" = "claude-3-sonnet-20240229" }
+        
+        [providers.google]
+        api_key = "${GOOGLE_AI_API_KEY}"
+        base_url = "https://generativelanguage.googleapis.com"
+        project_id = "your-gcp-project"
+        ```
+        
+        ### Load Balancing
+        
+        ```toml
+        [load_balancing]
+        strategy = "round_robin"  # round_robin, least_connections, weighted
+        health_check_interval = 30
+        
+        [[providers.anthropic.endpoints]]
+        url = "https://api.anthropic.com"
+        weight = 1
+        
+        [[providers.anthropic.endpoints]]
+        url = "https://api-backup.anthropic.com"
+        weight = 1
+        ```
+        
+        ### Monitoring Configuration
+        
+        ```toml
+        [monitoring]
+        prometheus_metrics = true
+        metrics_path = "/metrics"
+        health_path = "/health"
+        
+        [tracing]
+        enabled = true
+        endpoint = "http://jaeger:14268/api/traces"
+        ```
+        
+        ## Configuration Best Practices
+        
+        ### Development
+        
+        ```bash
+        # Use .env file for local development
+        ANTHROPIC_API_KEY=sk-ant-...
+        GOOGLE_AI_API_KEY=AIza...
+        RUST_LOG=debug
+        CLEWDR_HOST=127.0.0.1
+        CLEWDR_PORT=8484
+        ```
+        
+        ### Production
+        
+        ```bash
+        # Use secrets management
+        ANTHROPIC_API_KEY_FILE=/run/secrets/anthropic-key
+        GOOGLE_AI_API_KEY_FILE=/run/secrets/google-key
+        RUST_LOG=info
+        CLEWDR_HOST=0.0.0.0
+        CLEWDR_PORT=8484
+        CLEWDR_LOG_FORMAT=json
+        ```
+        
+        ### Security Hardening
+        
+        ```toml
+        [security]
+        require_auth = true
+        allowed_origins = ["https://yourdomain.com"]
+        rate_limit = 60
+        burst_limit = 10
+        max_request_size = 1048576  # 1MB
+        
+        [tls]
+        cert_file = "/etc/ssl/certs/clewdr.crt"
+        key_file = "/etc/ssl/private/clewdr.key"
+        min_version = "1.3"
+        ```
+        EOF
+        
+    - name: Build documentation with mdbook
+      run: |
+        echo "📖 Building documentation with mdbook..."
+        
+        cd docs
+        
+        # Install mdbook if not available in Nix shell
+        nix develop .#full --command bash -c "
+          mdbook build
+        "
+        
+        echo "✅ Documentation built successfully"
+        ls -la book/
+        
+    - name: Optimize documentation assets
+      run: |
+        echo "⚡ Optimizing documentation assets..."
+        
+        cd docs/book
+        
+        # Create custom CSS for better styling
+        mkdir -p theme
+        cat > theme/custom.css << 'EOF'
+        /* Custom ClewdR documentation styling */
+        
+        :root {
+          --sidebar-width: 260px;
+          --content-max-width: 900px;
+          --nav-height: 50px;
+        }
+        
+        .sidebar {
+          width: var(--sidebar-width);
+        }
+        
+        .content {
+          max-width: var(--content-max-width);
+          margin: 0 auto;
+        }
+        
+        /* Syntax highlighting improvements */
+        pre {
+          border-radius: 6px;
+          border: 1px solid #e1e5e9;
+        }
+        
+        /* Code block language indicators */
+        pre[class*="language-"]::before {
+          content: attr(class);
+          position: absolute;
+          top: 0;
+          right: 0;
+          padding: 2px 8px;
+          font-size: 12px;
+          background: #f6f8fa;
+          border-bottom-left-radius: 4px;
+        }
+        
+        /* Improve table styling */
+        table {
+          border-collapse: collapse;
+          margin: 20px 0;
+          width: 100%;
+        }
+        
+        th, td {
+          border: 1px solid #dfe2e5;
+          padding: 12px;
+          text-align: left;
+        }
+        
+        th {
+          background-color: #f6f8fa;
+          font-weight: 600;
+        }
+        
+        /* API endpoint styling */
+        .api-endpoint {
+          background: #f8f9fa;
+          border-left: 4px solid #28a745;
+          padding: 16px;
+          margin: 16px 0;
+          border-radius: 4px;
+        }
+        
+        /* Warning/info boxes */
+        .warning {
+          background: #fff3cd;
+          border-left: 4px solid #ffc107;
+          padding: 16px;
+          margin: 16px 0;
+        }
+        
+        .info {
+          background: #d1ecf1;
+          border-left: 4px solid #17a2b8;
+          padding: 16px;
+          margin: 16px 0;
+        }
+        EOF
+        
+        # Add favicon
+        echo "🎨 Adding favicon and branding..."
+        
+        # Create a simple SVG favicon (placeholder)
+        cat > favicon.svg << 'EOF'
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="#2563eb"/>
+          <text x="50" y="55" font-family="Arial" font-size="32" font-weight="bold" text-anchor="middle" fill="white">C</text>
+        </svg>
+        EOF
+        
+        # Convert SVG to PNG for favicon (if imagemagick available)
+        if command -v convert >/dev/null 2>&1; then
+          convert favicon.svg -resize 32x32 favicon.ico
+        fi
+        
+        echo "✅ Documentation assets optimized"
+        
+    - name: Upload documentation artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation-site
+        path: docs/book/
+        retention-days: 30
+        
+    - name: Generate documentation summary
+      run: |
+        echo "📊 Documentation Build Summary"
+        echo "=============================="
+        echo "Total pages: $(find docs/book -name "*.html" | wc -l)"
+        echo "Documentation size: $(du -sh docs/book | cut -f1)"
+        echo "Build time: $(date)"
+        echo "=============================="
+        
+        # Create build info file
+        cat > docs/book/build-info.json << EOF
+        {
+          "build_time": "$(date -Iseconds)",
+          "commit": "${{ github.sha }}",
+          "branch": "${{ github.ref_name }}",
+          "repository": "${{ github.repository }}",
+          "pages": $(find docs/book -name "*.html" | wc -l),
+          "size": "$(du -sb docs/book | cut -f1)"
+        }
+        EOF
+        
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.ref == 'refs/heads/main' || github.event.inputs.force_deploy == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+    - name: Download documentation artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: documentation-site
+        path: ./docs-site
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./docs-site
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      
+    - name: Create deployment summary
+      run: |
+        echo "🚀 Documentation Deployment Summary"
+        echo "=================================="
+        echo "Site URL: ${{ steps.deployment.outputs.page_url }}"
+        echo "Deployment time: $(date)"
+        echo "Commit: ${{ github.sha }}"
+        echo "Branch: ${{ github.ref_name }}"
+        echo "=================================="
+        
+  validate-links:
+    name: Validate Documentation Links
+    runs-on: ubuntu-latest
+    needs: deploy-docs
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Install link checker
+      run: |
+        npm install -g linkinator
+        
+    - name: Check documentation links
+      run: |
+        echo "🔗 Checking documentation links..."
+        
+        # Wait for deployment to be available
+        sleep 30
+        
+        # Check internal and external links
+        linkinator "${{ env.DOCS_SITE_URL }}" \
+          --recurse \
+          --markdown \
+          --timeout 10000 \
+          --skip "localhost|127.0.0.1|example.com" \
+          --format json > link-check-results.json
+          
+        # Report results
+        if [ $? -eq 0 ]; then
+          echo "✅ All documentation links are valid"
+        else
+          echo "❌ Some documentation links are broken"
+          cat link-check-results.json
+          exit 1
+        fi
+        
+    - name: Upload link check results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: link-check-results
+        path: link-check-results.json
+        retention-days: 7
+        
+  summary:
+    name: Documentation Workflow Summary
+    runs-on: ubuntu-latest
+    needs: [build-docs, deploy-docs, validate-links]
+    if: always()
+    
+    steps:
+    - name: Report workflow results
+      run: |
+        echo "📚 Documentation Workflow Summary"
+        echo "================================="
+        echo "Build: ${{ needs.build-docs.result }}"
+        echo "Deploy: ${{ needs.deploy-docs.result }}"
+        echo "Link Validation: ${{ needs.validate-links.result }}"
+        echo "================================="
+        
+        if [[ "${{ needs.build-docs.result }}" == "success" ]]; then
+          echo "✅ Documentation built successfully"
+        else
+          echo "❌ Documentation build failed"
+        fi
+        
+        if [[ "${{ needs.deploy-docs.result }}" == "success" ]]; then
+          echo "✅ Documentation deployed successfully"
+          echo "🌐 Site available at: ${{ env.DOCS_SITE_URL }}"
+        else
+          echo "❌ Documentation deployment failed"
+        fi
+        
+        if [[ "${{ needs.validate-links.result }}" == "success" ]]; then
+          echo "✅ All documentation links are valid"
+        else
+          echo "⚠️ Some documentation links may be broken"
+        fi
