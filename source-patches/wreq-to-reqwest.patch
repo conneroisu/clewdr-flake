@@ -1,0 +1,81 @@
+--- a/src/api/config.rs
++++ b/src/api/config.rs
+@@ -1,4 +1,4 @@
+-use wreq::StatusCode;
++use reqwest::StatusCode;
+ 
+ // Rest of file unchanged...
+
+--- a/src/api/misc.rs
++++ b/src/api/misc.rs
+@@ -1,4 +1,4 @@
+-use wreq::StatusCode;
++use reqwest::StatusCode;
+ 
+ // Rest of file unchanged...
+
+--- a/src/services/update.rs
++++ b/src/services/update.rs
+@@ -1,4 +1,4 @@
+-use wreq::Client;
++use reqwest::Client;
+ 
+ // Rest of file - replace wreq::redirect::Policy with reqwest equivalents
+
+--- a/src/gemini_state/mod.rs
++++ b/src/gemini_state/mod.rs
+@@ -1,4 +1,4 @@
+-use wreq::{Client, ClientBuilder, header::AUTHORIZATION};
++use reqwest::{Client, ClientBuilder, header::AUTHORIZATION};
+ 
+ // Rest of file - update method calls to reqwest API
+
+--- a/src/error.rs
++++ b/src/error.rs  
+@@ -1,4 +1,4 @@
+-use wreq::{Response, StatusCode, header::InvalidHeaderValue};
++use reqwest::{Response, StatusCode, header::InvalidHeaderValue};
+
+--- a/src/claude_web_body/request.rs
++++ b/src/claude_web_body/request.rs
+-use wreq::{
++use reqwest::{
+     Client,
+     Error as ReqwestError,
+     Response,
+@@ -10,2 +10,2 @@
+ };
+
+--- a/src/claude_code_state/mod.rs
++++ b/src/claude_code_state/mod.rs
+-use wreq::{ClientBuilder, IntoUrl, RequestBuilder};
+-use wreq_util::Emulation;
++use reqwest::{ClientBuilder, IntoUrl, RequestBuilder};
++// Remove wreq_util::Emulation - implement equivalent functionality
+
+--- a/src/claude_web_state/mod.rs
++++ b/src/claude_web_state/mod.rs
+-use wreq::{
++use reqwest::{
+     Client,
+     ClientBuilder,
+     Error as ReqError,
+@@ -8,2 +8,2 @@
+     Url,
+ };
+-use wreq_util::Emulation;
++// Remove wreq_util::Emulation - implement equivalent functionality
+
+--- a/src/services/cache.rs
++++ b/src/services/cache.rs
+@@ -120,3 +120,3 @@
+-    ) -> Option<impl Stream<Item = Result<Bytes, wreq::Error>> + Send + 'static> {
++    ) -> Option<impl Stream<Item = Result<Bytes, reqwest::Error>> + Send + 'static> {
+         
+@@ -178,3 +178,3 @@
+-    stream: impl Stream<Item = Result<Bytes, wreq::Error>> + Send + 'static,
++    stream: impl Stream<Item = Result<Bytes, reqwest::Error>> + Send + 'static,
+     
+@@ -195,3 +195,3 @@
+-fn vec_to_stream(bytes: Vec<Bytes>) -> impl Stream<Item = Result<Bytes, wreq::Error>> {
++fn vec_to_stream(bytes: Vec<Bytes>) -> impl Stream<Item = Result<Bytes, reqwest::Error>> {

@@ -4,20 +4,10 @@
 , fetchFromGitHub
 , buildNpmPackage
 , pkg-config
-, openssl
 , cmake
-, clang
-, llvmPackages
+, installShellFiles
 , nodejs_22
 , cacert
-, installShellFiles
-, go
-, perl
-, python3
-, zlib
-, which
-, findutils
-, gnumake
 , darwin
 }:
 
@@ -25,12 +15,8 @@ let
   pname = "clewdr";
   version = "0.10.9";
 
-  src = fetchFromGitHub {
-    owner = "Xerxes-2";
-    repo = "clewdr";
-    rev = "v${version}";
-    hash = "sha256-P+HzZ3+9VT0aPZJOP6U9KLyDLVqAE1xjXNjnC9fuEPE=";
-  };
+  # Use local patched source with reqwest instead of wreq
+  src = ./clewdr-source;
 
   # For now, we'll create an empty frontend directory and skip the frontend build
   # The Rust application can work without the web UI by using the --file flag
@@ -57,43 +43,24 @@ let
 in rustPlatform.buildRustPackage rec {
   inherit pname version src;
 
-  cargoHash = "sha256-9V4Ud5Vyvq5TnjokxfvhIctp4hKwbt7plpgMzqTWJM8=";
+  cargoHash = "sha256-lcrzvGUcBF86CMIPcwcg4S9WBcPYk24DcmWH5dRuDzY=";
 
   nativeBuildInputs = [
     pkg-config
     cmake
-    clang
-    llvmPackages.libclang
     installShellFiles
-    # BoringSSL build dependencies
-    go
-    perl
-    python3
-    # Additional build tools
-    which
-    findutils
-    gnumake
   ] ++ lib.optionals stdenv.isDarwin [
     darwin.apple_sdk.frameworks.Security
     darwin.apple_sdk.frameworks.SystemConfiguration
   ];
 
-  buildInputs = [
-    openssl
-    zlib
-  ] ++ lib.optionals stdenv.isDarwin [
+  buildInputs = lib.optionals stdenv.isDarwin [
     darwin.apple_sdk.frameworks.Security
     darwin.apple_sdk.frameworks.SystemConfiguration
   ];
 
   # Set environment variables for the build
   env = {
-    # Use system OpenSSL
-    OPENSSL_DIR = "${openssl.dev}";
-    OPENSSL_LIB_DIR = "${lib.getLib openssl}/lib";
-    OPENSSL_INCLUDE_DIR = "${openssl.dev}/include";
-    PKG_CONFIG_PATH = "${openssl.dev}/lib/pkgconfig";
-    LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
     # Enable Rust backtrace for debugging
     RUST_BACKTRACE = "1";
   };

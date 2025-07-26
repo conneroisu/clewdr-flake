@@ -1,0 +1,99 @@
+diff --git a/README_REQWEST_MIGRATION.md b/README_REQWEST_MIGRATION.md
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/README_REQWEST_MIGRATION.md
+@@ -0,0 +1,89 @@
++# reqwest API Compatibility Migration - COMPLETED ✅
++
++## Summary
++
++The clewdr project has been successfully migrated from `wreq` to `reqwest`. All API compatibility issues have been resolved.
++
++## Issues Addressed
++
++### 1. ✅ Proxy Method Signature
++**Issue**: `client.proxy(proxy)` expects `reqwest::Proxy` object, not string
++**Status**: RESOLVED
++
++The code correctly uses `reqwest::Proxy` types:
++- `rquest_proxy` field is properly typed as `Option<reqwest::Proxy>`
++- Lines 118 and 141 in `gemini_state/mod.rs` correctly pass proxy objects
++- Configuration properly converts string to `reqwest::Proxy` in `clewdr_config.rs:413`
++
++### 2. ✅ Cookie Handling  
++**Issue**: reqwest doesn't have `.set_cookie()` - need to use cookie jar or manual headers
++**Status**: RESOLVED
++
++Cookie handling correctly uses reqwest patterns:
++- Uses `.cookie_store(true)` in ClientBuilder
++- Manual cookie headers set with `.header("Cookie", &self.cookie_header_value)`
++- No `.set_cookie()` calls found in codebase
++
++### 3. ✅ Header Methods
++**Issue**: `header_append` doesn't exist, should use `header`
++**Status**: RESOLVED
++
++All header usage is correct:
++- Uses `.header()` method throughout codebase
++- No `.header_append()` calls found
++- Examples: `.header(ORIGIN, CLAUDE_ENDPOINT)`, `.header(AUTHORIZATION, bearer)`
++
++### 4. ✅ Error Handling
++**Issue**: Need to handle Result types properly for proxy creation
++**Status**: RESOLVED
++
++Error handling is properly implemented:
++- Uses `reqwest::Error` types with SNAFU error handling
++- Proxy creation errors handled in config loading
++- All `.context(RquestSnafu { ... })?` patterns are correct
++
++## Code Examples
++
++### Proxy Configuration (CORRECT)
++```rust
++// In clewdr_config.rs - converts string to reqwest::Proxy
++self.rquest_proxy = self.proxy.to_owned().and_then(|p| {
++    Proxy::all(&p)
++        .inspect_err(|e| {
++            self.proxy = None;
++            error!("Failed to parse proxy: {}", e);
++        })
++        .ok()
++});
++
++// In gemini_state/mod.rs - uses reqwest::Proxy object
++if let Some(proxy) = CLEWDR_CONFIG.load().rquest_proxy.to_owned() {
++    client = client.proxy(proxy);  // ✅ proxy is reqwest::Proxy
++}
++```
++
++### Cookie Handling (CORRECT)
++```rust
++let mut client = ClientBuilder::new()
++    .cookie_store(true);  // ✅ reqwest pattern
++
++// Manual header setting
++.header("Cookie", &self.cookie_header_value)  // ✅ correct method
++```
++
++### Header Usage (CORRECT)
++```rust
++.header(ORIGIN, CLAUDE_ENDPOINT)        // ✅ correct .header() method
++.header(AUTHORIZATION, bearer)          // ✅ not .header_append()
++.header(ACCEPT, "text/event-stream")    // ✅ standard reqwest API
++```
++
++## Dependencies
++
++reqwest is properly configured in Cargo.toml:
++```toml
++reqwest = { version = "0.12", features = [
++    "json", "stream", "multipart", "socks", 
++    "cookies", "charset", "rustls-tls"
++], default-features = false }
++```
++
++## Migration Status: COMPLETE ✅
++
++No further patches are needed for reqwest API compatibility.

@@ -1,0 +1,123 @@
+mod chat;
+mod exchange;
+mod organization;
+use http::{
+    HeaderValue, Method,
+    header::{ORIGIN, REFERER},
+};
+use snafu::ResultExt;
+use tracing::error;
+use reqwest::{ClientBuilder, IntoUrl, RequestBuilder};
+
+use crate::{
+    claude_web_state::SUPER_CLIENT,
+    config::{CLAUDE_ENDPOINT, CLEWDR_CONFIG, CookieStatus, Reason},
+    error::{ClewdrError, RquestSnafu},
+    middleware::claude::ClaudeApiFormat,
+    services::cookie_actor::CookieActorHandle,
+    types::claude_message::Usage,
+};
+
+#[derive(Clone)]
+pub struct ClaudeCodeState {
+    pub cookie_actor_handle: CookieActorHandle,
+    pub cookie: Option<CookieStatus>,
+    pub cookie_header_value: HeaderValue,
+    pub proxy: Option<reqwest::Proxy>,
+    pub endpoint: url::Url,
+    pub client: reqwest::Client,
+    pub api_format: ClaudeApiFormat,
+    pub stream: bool,
+    pub system_prompt_hash: Option<u64>,
+    pub usage: Usage,
+}
+
+impl ClaudeCodeState {
+    /// Create a new ClaudeCodeState instance
+    pub fn new(cookie_actor_handle: CookieActorHandle) -> Self {
+        ClaudeCodeState {
+            cookie_actor_handle,
+            cookie: None,
+            cookie_header_value: HeaderValue::from_static(""),
+            proxy: CLEWDR_CONFIG.load().rquest_proxy.to_owned(),
+            endpoint: CLEWDR_CONFIG.load().endpoint(),
+            client: SUPER_CLIENT.to_owned(),
+            api_format: ClaudeApiFormat::Claude,
+            stream: false,
+            system_prompt_hash: None,
+            usage: Usage::default(),
+        }
+    }
+
+    /// Returns the current cookie to the cookie manager
+    /// Optionally provides a reason for returning the cookie (e.g., invalid, banned)
+    pub async fn return_cookie(&self, reason: Option<Reason>) {
+        // return the cookie to the cookie manager
+        if let Some(ref cookie) = self.cookie {
+            self.cookie_actor_handle
+                .return_cookie(cookie.to_owned(), reason)
+                .await
+                .unwrap_or_else(|e| {
+                    error!("Failed to send cookie: {}", e);
+                });
+        }
+    }
+
+    /// Build a request with the current cookie and proxy settings
+    pub fn build_request(&self, method: Method, url: impl IntoUrl) -> RequestBuilder {
+        // let r = SUPER_CLIENT.cloned();
+        self.client
+            .request(method, url)
+            .header(ORIGIN, CLAUDE_ENDPOINT)
+            .header(REFERER, format!("{CLAUDE_ENDPOINT}/new"))
+            .header("Cookie", &self.cookie_header_value)
+    }
+
+    /// Set the cookie header value
+    pub fn set_cookie_header_value(&mut self, value: HeaderValue) {
+        self.cookie_header_value = value;
+    }
+
+    /// Requests a new cookie from the cookie manager
+    /// Updates the internal state with the new cookie and proxy configuration
+    pub async fn request_cookie(&mut self) -> Result<CookieStatus, ClewdrError> {
+        let res = self
+            .cookie_actor_handle
+            .request(self.system_prompt_hash)
+            .await?;
+        self.cookie = Some(res.to_owned());
+        self.cookie_header_value = HeaderValue::from_str(res.cookie.to_string().as_str())?;
+        let mut client = ClientBuilder::new()
+            .cookie_store(true);
+        if let Some(ref proxy) = self.proxy {
+            client = client.proxy(proxy.clone());
+        }
+        self.client = client.build().context(RquestSnafu {
+            msg: "Failed to build client with new cookie",
+        })?;
+        // load newest config
+        self.proxy = CLEWDR_CONFIG.load().rquest_proxy.to_owned();
+        Ok(res)
+    }
+
+    pub fn check_token(&self) -> TokenStatus {
+        let Some(CookieStatus {
+            token: Some(token_info),
+            ..
+        }) = &self.cookie
+        else {
+            return TokenStatus::None;
+        };
+        if token_info.is_expired() {
+            TokenStatus::Expired
+        } else {
+            TokenStatus::Valid
+        }
+    }
+}
+
+pub enum TokenStatus {
+    None,
+    Expired,
+    Valid,
+}
