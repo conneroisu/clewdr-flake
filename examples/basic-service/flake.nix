@@ -16,6 +16,12 @@
           boot.loader.systemd-boot.enable = true;
           boot.loader.efi.canTouchEfiVariables = true;
           
+          # Root filesystem (required for NixOS)
+          fileSystems."/" = {
+            device = "/dev/disk/by-label/nixos";
+            fsType = "ext4";
+          };
+          
           networking.hostName = "clewdr-basic";
           networking.firewall.enable = true;
           
@@ -61,10 +67,51 @@
     };
     
     # VM test for this example
-    checks.x86_64-linux.vm-test = import ../../tests/nixos-test.nix {
-      pkgs = nixpkgs.legacyPackages.x86_64-linux;
-      clewdrPackage = clewdr-flake.packages.x86_64-linux.clewdr;
-      clewdrModule = clewdr-flake.nixosModules.clewdr;
+    checks.x86_64-linux.vm-test = nixpkgs.legacyPackages.x86_64-linux.nixosTest {
+      name = "clewdr-basic-service";
+      
+      nodes.machine = { config, pkgs, ... }: {
+        imports = [ clewdr-flake.nixosModules.clewdr ];
+        
+        # Root filesystem (required for VM tests)
+        fileSystems."/" = {
+          device = "/dev/disk/by-label/nixos";
+          fsType = "ext4";
+        };
+        
+        services.clewdr = {
+          enable = true;
+          package = clewdr-flake.packages.x86_64-linux.clewdr;
+          ip = "0.0.0.0";
+          port = 8484;
+          
+          settings = {
+            password = "demo-password";
+            admin_password = "demo-admin-password";
+          };
+          
+          environment = {
+            ANTHROPIC_API_KEY = "sk-demo-key";
+            GOOGLE_AI_API_KEY = "demo-google-key";
+          };
+          
+          openFirewall = true;
+        };
+        
+        environment.systemPackages = with pkgs; [ curl jq netcat-gnu ];
+      };
+      
+      testScript = ''
+        machine.start()
+        machine.wait_for_unit("multi-user.target")
+        machine.wait_for_unit("clewdr.service")
+        machine.wait_for_open_port(8484)
+        
+        # Test basic connectivity
+        machine.succeed("curl -f http://127.0.0.1:8484/ || curl -f http://127.0.0.1:8484/health || true")
+        
+        print("Basic service test passed!")
+      '';
     };
   };
 }

@@ -1,0 +1,86 @@
+# Configuration for cargo-deny
+# https://embarkstudios.github.io/cargo-deny/
+
+[licenses]
+# See https://spdx.org/licenses/ for list of possible licenses
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause", 
+    "ISC",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+]
+
+# List of explicitly disallowed licenses
+deny = [
+    "GPL-2.0",
+    "GPL-3.0",
+    "AGPL-1.0",
+    "AGPL-3.0",
+]
+
+# Lint level for when multiple versions of the same license are detected
+multiple-versions = "warn"
+
+# Lint level for when a license exception is encountered
+exceptions = "warn"
+
+[bans]
+# Lint level for when multiple versions of the same crate are detected
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+
+# List of crates that are allowed to have multiple versions
+skip = [
+    # Allow multiple versions of these crates as they're commonly duplicated
+    "windows_aarch64_gnullvm",
+    "windows_aarch64_msvc", 
+    "windows_i686_gnu",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
+]
+
+# List of crates to deny
+deny = [
+    # Deny crates with known security vulnerabilities
+    { name = "openssl", version = "<0.10.55" },
+    # Deny old versions with known issues
+    { name = "time", version = "0.1" },
+]
+
+[advisories]
+# Database URLs
+db-urls = ["https://github.com/rustsec/advisory-db"]
+
+# Lint level for security vulnerabilities
+vulnerability = "deny"
+
+# Lint level for unmaintained crates
+unmaintained = "warn"
+
+# Lint level for crates with security notices
+notice = "warn"
+
+# A list of advisory IDs to ignore
+ignore = [
+    # Ignore specific advisories if needed
+]
+
+[sources]
+# Lint level for what to happen when a crate from a crate registry that is not in the allow list is encountered
+unknown-registry = "warn"
+
+# Lint level for what to happen when a crate from a git repository that is not in the allow list is encountered
+unknown-git = "warn"
+
+# List of allowed registries
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+# List of allowed Git repositories
+allow-git = []

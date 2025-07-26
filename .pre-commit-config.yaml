@@ -1,0 +1,100 @@
+# Pre-commit hooks configuration
+# Run with: pre-commit run --all-files
+
+repos:
+  # Rust hooks
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: Cargo format
+        entry: cargo fmt
+        language: system
+        types: [rust]
+        pass_filenames: false
+        
+      - id: cargo-clippy
+        name: Cargo clippy
+        entry: cargo clippy
+        language: system
+        types: [rust]
+        pass_filenames: false
+        args: ["--", "-D", "warnings"]
+        
+      - id: cargo-check
+        name: Cargo check
+        entry: cargo check
+        language: system
+        types: [rust]
+        pass_filenames: false
+        
+      - id: cargo-test
+        name: Cargo test
+        entry: cargo test
+        language: system
+        types: [rust]
+        pass_filenames: false
+        
+      - id: cargo-audit
+        name: Cargo audit
+        entry: cargo audit
+        language: system
+        types: [rust]
+        pass_filenames: false
+        
+      - id: cargo-deny
+        name: Cargo deny
+        entry: cargo deny
+        language: system
+        types: [rust]
+        pass_filenames: false
+        args: ["check"]
+
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+
+  # Nix formatting
+  - repo: https://github.com/nix-community/nixpkgs-fmt
+    rev: v1.3.0
+    hooks:
+      - id: nixpkgs-fmt
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
+  # Markdown and documentation
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix']
+
+  # YAML formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [yaml, json, markdown]
+
+  # Spell checking
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.16.26
+    hooks:
+      - id: typos
