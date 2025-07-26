@@ -9,6 +9,7 @@ pkgs.nixosTest {
       
       services.clewdr = {
         enable = true;
+        package = clewdrPackage;
         ip = "0.0.0.0";
         port = 8100;
         
@@ -57,7 +58,6 @@ pkgs.nixosTest {
   };
   
   testScript = ''
-    import json
     import time
     
     # Start both machines

@@ -1,0 +1,123 @@
+# Default values for clewdr
+replicaCount: 3
+
+image:
+  repository: clewdr
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 65534
+
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8484
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  hosts:
+    - host: clewdr.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: clewdr-tls
+      hosts:
+        - clewdr.example.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Configuration
+config:
+  logLevel: "info"
+  port: 8484
+  host: "0.0.0.0"
+
+# Secrets configuration
+secrets:
+  anthropicApiKey: ""
+  googleAiApiKey: ""
+  
+# External secrets (if using external-secrets operator)
+externalSecrets:
+  enabled: false
+  secretStore:
+    name: ""
+    kind: SecretStore
+  data: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Monitoring
+monitoring:
+  serviceMonitor:
+    enabled: false
+    namespace: monitoring
+    labels: {}
+    interval: 30s
+    path: /metrics

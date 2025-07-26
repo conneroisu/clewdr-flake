@@ -128,12 +128,94 @@ This package includes several compatibility patches:
 - Configuration save attempts to read-only filesystem (non-fatal warning)
 - Some systemd security restrictions relaxed for filesystem compatibility
 
+## [2.0.0] - 2025-01-26
+
+### 🚀 Comprehensive Platform Release
+
+**Major expansion from simple package to comprehensive development and deployment platform**
+
+### ✨ New Platform Features
+
+#### Container & Orchestration (🐳)
+- **Docker Images**: Layered and OCI-compatible container builds with multi-architecture support
+- **Kubernetes**: Production-ready deployment manifests with security hardening and auto-scaling
+- **Helm Chart**: Complete Helm chart with configurable values and environment management
+- **Multi-Architecture**: Cross-platform container builds for AMD64 and ARM64
+
+#### GitOps & Automation (🔄)
+- **Kustomize**: Environment-specific configurations for staging and production
+- **ArgoCD**: Complete GitOps automation with continuous deployment
+- **Network Security**: Production-ready network policies and service monitoring
+- **CI/CD Integration**: Local testing with act and comprehensive pipeline validation
+
+#### Advanced Development (🛠️)
+- **16 Applications**: Comprehensive workflow management (up from 1)
+- **4 Development Shells**: Full, minimal, and pre-commit environments  
+- **Performance Profiling**: CPU, memory, and flame graph analysis tools
+- **Integration Testing**: Comprehensive test framework with automated validation
+
+#### Monitoring & Observability (📊)
+- **Prometheus Integration**: Custom metrics and alerting rules for ClewdR
+- **Performance Benchmarking**: Automated performance testing and analysis
+- **Health Monitoring**: Service monitoring for Kubernetes deployments
+- **Security Auditing**: Dependency scanning and license compliance
+
+#### Developer Experience (🔧)
+- **VS Code Integration**: Complete workspace with debugging and task configuration
+- **Pre-commit Hooks**: Automated code quality enforcement and security scanning
+- **Development Utils**: 13-command workflow management script
+- **IDE Support**: Debugging configurations and intelligent code completion
+
+### 📊 Platform Statistics
+- **Applications**: 1 → 16 (1500% increase)
+- **Development Shells**: 1 → 4 specialized environments
+- **Checks**: 2 → 14 comprehensive validations
+- **Deployment Methods**: 3 → 7 deployment targets
+- **File Structure**: Organized into logical directory hierarchy
+
+### 🔧 Enhanced Applications
+
+#### Development Tools
+- `dev-watch` - Auto-rebuild on code changes with cargo-watch
+- `dev-env` - Complete development environment setup automation
+- `security-audit` - Comprehensive vulnerability and policy scanning
+- `test-integration` - Full integration testing with server lifecycle management
+
+#### Performance & Analysis  
+- `profile` - Multi-mode profiling (CPU, memory, flamegraph, benchstat)
+- `bench` - Performance benchmarking with wrk and hyperfine
+- `test-ci` - Local CI pipeline testing with GitHub Actions simulation
+
+#### Container & Deployment
+- `container-build` - Docker image building with registry push support
+- `build-multiarch` - Multi-architecture container builds
+- `deploy` - Unified deployment interface (Docker, K8s, Helm, GitOps)
+
+#### Utilities & Documentation
+- `docs` - Documentation generation with mdbook integration
+- `secrets` - Secrets management with sops and age encryption
+
+### 🔒 Security Enhancements
+- **Container Security**: Non-root execution and read-only filesystems
+- **Network Policies**: Kubernetes network isolation and traffic control
+- **Secrets Management**: Encrypted secrets with sops-nix integration
+- **Dependency Auditing**: Automated vulnerability scanning and license compliance
+- **Code Quality**: Pre-commit hooks preventing security issues
+
+### 📁 Repository Organization
+Restructured repository with logical directory hierarchy:
+- **Core Configuration**: `flake.nix`, `package.nix`, `module.nix`, `dev-utils.sh`
+- **Container & Orchestration**: `k8s/`, `gitops/`, `monitoring/`
+- **Development & Testing**: `tests/`, `.vscode/`, quality automation files
+- **Documentation**: Comprehensive guides and examples
+- **Build Artifacts**: Organized in `scripts/` and proper gitignore
+
 ### 🔮 Future Plans
-- Enhanced security hardening options
-- Additional configuration validation
-- Performance optimization flags
-- Integration with NixOS secrets management systems
+- Multi-cloud deployment support
+- Advanced monitoring and alerting integrations  
+- Extended IDE integrations (JetBrains, Emacs, Vim)
+- Performance optimization and caching strategies
 
 ---
 
-**Full Changelog**: https://github.com/your-username/clewdr-flake/commits/v1.0.0
+**Full Changelog**: https://github.com/your-username/clewdr-flake/commits/v2.0.0

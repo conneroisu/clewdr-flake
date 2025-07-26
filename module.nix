@@ -5,47 +5,66 @@ with lib;
 let
   cfg = config.services.clewdr;
   
+  # TOML configuration format for ClewdR settings
+  # Provides type-safe configuration generation with validation
   settingsFormat = pkgs.formats.toml { };
   configFile = settingsFormat.generate "clewdr.toml" cfg.settings;
 
+  # Default system user and group for security isolation
+  # Running as dedicated user follows principle of least privilege
   defaultUser = "clewdr";
   defaultGroup = "clewdr";
   
 in {
+  # NixOS service module options for ClewdR LLM proxy
+  # Provides declarative configuration for production deployments
   options.services.clewdr = {
+    # Main service toggle - enables/disables entire ClewdR service
     enable = mkEnableOption "ClewdR LLM proxy service";
 
+    # Package selection - allows using custom or specific versions
     package = mkPackageOption pkgs "clewdr" { };
 
+    # System user configuration for service isolation
+    # Defaults to dedicated 'clewdr' user for security
     user = mkOption {
       type = types.str;
       default = defaultUser;
       description = "User account under which ClewdR runs.";
     };
 
+    # System group configuration for file permissions
+    # Matches user by default for consistent access control
     group = mkOption {
       type = types.str;
       default = defaultGroup;
       description = "Group account under which ClewdR runs.";
     };
 
+    # Data storage directory for persistent application state
+    # Located in standard /var/lib hierarchy for system services
     dataDir = mkOption {
       type = types.path;
       default = "/var/lib/clewdr";
       description = "Directory where ClewdR stores its data.";
     };
 
+    # Firewall integration for automatic port management
+    # Disabled by default for security - requires explicit enabling
     openFirewall = mkOption {
       type = types.bool;
       default = false;
       description = "Whether to open the firewall for ClewdR's port.";
     };
 
+    # Structured configuration settings for ClewdR application
+    # Uses TOML format for type-safe configuration management
     settings = mkOption {
       type = settingsFormat.type;
       default = { };
       description = ''
         Configuration for ClewdR. See the ClewdR documentation for available options.
+        Settings are merged with explicit options like ip, port, and password files.
       '';
       example = literalExpression ''
         {
@@ -59,35 +78,43 @@ in {
       '';
     };
 
-    # Server settings
+    # Network binding configuration
+    # Controls which network interfaces the service listens on
     ip = mkOption {
       type = types.str;
-      default = "127.0.0.1";
-      description = "IP address to bind to.";
+      default = "127.0.0.1";  # Localhost only by default for security
+      description = "IP address to bind to. Use 0.0.0.0 for all interfaces.";
     };
 
+    # TCP port for HTTP server
+    # Standard port 8484 chosen to avoid conflicts with common services
     port = mkOption {
       type = types.port;
       default = 8484;
       description = "Port to listen on.";
     };
 
-    # Authentication
+    # Secure password file for API authentication
+    # File-based approach prevents passwords in Nix store
     passwordFile = mkOption {
       type = types.nullOr types.path;
       default = null;
       description = ''
         Path to a file containing the API password.
         If set, this takes precedence over the password in settings.
+        Recommended for production deployments to avoid passwords in Nix store.
       '';
     };
 
+    # Secure admin password file for administrative functions
+    # Separate from regular API password for privilege separation
     adminPasswordFile = mkOption {
       type = types.nullOr types.path;
       default = null;
       description = ''
         Path to a file containing the admin password.
         If set, this takes precedence over the admin_password in settings.
+        Required for administrative operations and service management.
       '';
     };
 

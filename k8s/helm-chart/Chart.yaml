@@ -1,0 +1,20 @@
+apiVersion: v2
+name: clewdr
+description: A Helm chart for ClewdR - High-Performance LLM Proxy
+type: application
+version: 0.1.0
+appVersion: "0.10.9"
+home: https://github.com/user/clewdr-flake
+sources:
+  - https://github.com/user/clewdr-flake
+maintainers:
+  - name: ClewdR Team
+    email: team@clewdr.example.com
+keywords:
+  - llm
+  - proxy
+  - ai
+  - claude
+  - gemini
+annotations:
+  category: AI/ML

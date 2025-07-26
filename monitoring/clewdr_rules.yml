@@ -1,0 +1,89 @@
+groups:
+  - name: clewdr.rules
+    rules:
+      # High-level health indicators
+      - alert: ClewdrDown
+        expr: up{job="clewdr"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ClewdR service is down"
+          description: "ClewdR service has been down for more than 1 minute"
+
+      # Performance alerts
+      - alert: ClewdrHighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="clewdr"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClewdR high response time"
+          description: "95th percentile response time is {{ $value }}s"
+
+      - alert: ClewdrHighErrorRate
+        expr: rate(http_requests_total{job="clewdr",status=~"5.."}[5m]) / rate(http_requests_total{job="clewdr"}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ClewdR high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      # Resource utilization
+      - alert: ClewdrHighCPU
+        expr: rate(process_cpu_seconds_total{job="clewdr"}[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClewdR high CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+
+      - alert: ClewdrHighMemory
+        expr: process_resident_memory_bytes{job="clewdr"} / 1024 / 1024 > 400
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClewdR high memory usage"
+          description: "Memory usage is {{ $value }}MB"
+
+      # LLM API specific alerts
+      - alert: ClewdrAnthropicAPIErrors
+        expr: rate(anthropic_api_errors_total{job="clewdr"}[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Anthropic API error rate"
+          description: "Anthropic API error rate is {{ $value }} errors/sec"
+
+      - alert: ClewdrGoogleAPIErrors
+        expr: rate(google_api_errors_total{job="clewdr"}[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Google AI API error rate"  
+          description: "Google AI API error rate is {{ $value }} errors/sec"
+
+      # Rate limiting alerts
+      - alert: ClewdrRateLimited
+        expr: rate(rate_limit_exceeded_total{job="clewdr"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClewdR experiencing rate limiting"
+          description: "Rate limiting events: {{ $value }} per second"
+
+      # Connection pool alerts
+      - alert: ClewdrConnectionPoolExhausted
+        expr: connection_pool_active{job="clewdr"} / connection_pool_max{job="clewdr"} > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ClewdR connection pool nearly exhausted"
+          description: "Connection pool utilization: {{ $value | humanizePercentage }}"

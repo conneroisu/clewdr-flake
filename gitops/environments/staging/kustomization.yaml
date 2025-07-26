@@ -1,0 +1,69 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference to base configuration
+resources:
+  - ../../
+
+# Staging-specific namespace
+namespace: clewdr-staging
+
+# Staging-specific labels
+commonLabels:
+  environment: staging
+  deployment.environment: staging
+
+# Staging-specific annotations
+commonAnnotations:
+  deployment.kubernetes.io/environment: staging
+
+# Staging image configuration
+images:
+  - name: clewdr
+    newTag: staging-latest
+
+# Staging-specific ConfigMap
+configMapGenerator:
+  - name: clewdr-config
+    behavior: merge
+    literals:
+      - RUST_LOG=debug
+      - ENVIRONMENT=staging
+
+# Staging-specific patches
+patches:
+  - target:
+      kind: Deployment
+      name: clewdr
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "64Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
+
+  - target:
+      kind: Ingress
+      name: clewdr-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: clewdr-staging.example.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: clewdr-staging.example.com
+
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: clewdr-hpa
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 5

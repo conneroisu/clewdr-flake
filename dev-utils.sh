@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
 # ClewdR Development Utilities
-# Usage: ./dev-utils.sh <command>
+# Comprehensive development workflow management script
+# Provides unified interface for common development tasks
+# Usage: ./dev-utils.sh <command> [arguments]
 
+# Exit on any error, undefined variables, or pipe failures
+# Ensures script stops on first sign of trouble for safety
 set -euo pipefail
 
+# Change to script directory for consistent relative path behavior
+# Ensures all operations work regardless of where script is called from
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# ANSI color codes for enhanced terminal output readability
+# Provides visual feedback for different types of operations
+RED='\033[0;31m'      # Error messages and failures
+GREEN='\033[0;32m'    # Success messages and completions
+YELLOW='\033[1;33m'   # Warning messages and notifications
+BLUE='\033[0;34m'     # Informational messages and progress
+NC='\033[0m'          # Reset to default color
+
+# Logging functions with emoji indicators for visual clarity
+# Provides consistent formatting for different message types
 
 log_info() {
     echo -e "${BLUE}ℹ️  $1${NC}"
@@ -30,32 +40,41 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-# Development commands
+# Development environment setup and initialization
+# Prepares the development environment with all necessary tools
 dev_setup() {
     log_info "Setting up ClewdR development environment..."
     
-    # Enter development shell
+    # Initialize complete development environment with full toolchain
     log_info "Entering Nix development shell..."
     nix develop
 }
 
+# Automatic rebuild and development watch mode
+# Monitors source files and rebuilds on changes for rapid iteration
 dev_watch() {
     log_info "Starting development watch mode..."
     nix run .#dev-watch
 }
 
+# Comprehensive testing suite covering all aspects of code quality
+# Runs unit tests, integration tests, security audits, and code quality checks
 dev_test() {
     log_info "Running comprehensive tests..."
     
+    # Run Rust unit and integration tests
     log_info "1. Running cargo tests..."
     cargo test
     
+    # Validate Nix flake configuration and build definitions
     log_info "2. Running Nix flake checks..."
     nix flake check --no-build
     
+    # Security vulnerability and policy compliance scanning
     log_info "3. Running security audit..."
     nix run .#security-audit
     
+    # Code quality enforcement through pre-commit hooks
     log_info "4. Running pre-commit hooks..."
     nix develop .#pre-commit --command pre-commit run --all-files || true
     
@@ -158,9 +177,29 @@ dev_deploy() {
             nix build .#checks.x86_64-linux.nixos-vm-test
             log_success "VM test completed!"
             ;;
+        "k8s")
+            log_info "Deploying to Kubernetes..."
+            kubectl apply -f k8s/deployment.yaml
+            log_success "Kubernetes deployment completed!"
+            ;;
+        "helm")
+            log_info "Deploying with Helm..."
+            helm upgrade --install clewdr k8s/helm-chart/ --create-namespace --namespace clewdr
+            log_success "Helm deployment completed!"
+            ;;
+        "staging")
+            log_info "Deploying to staging environment..."
+            kubectl apply -k gitops/environments/staging/
+            log_success "Staging deployment completed!"
+            ;;
+        "production")
+            log_info "Deploying to production environment..."
+            kubectl apply -k gitops/environments/production/
+            log_success "Production deployment completed!"
+            ;;
         *)
             log_error "Unknown deployment target: $1"
-            log_info "Available targets: docker, nixos, vm"
+            log_info "Available targets: docker, nixos, vm, k8s, helm, staging, production"
             exit 1
             ;;
     esac
@@ -175,6 +214,22 @@ dev_secrets() {
     log_info "Managing secrets..."
     shift # Remove 'secrets' from arguments
     nix run .#secrets -- "$@"
+}
+
+dev_profile() {
+    log_info "Running performance profiling..."
+    shift # Remove 'profile' from arguments
+    nix run .#profile -- "$@"
+}
+
+dev_integration() {
+    log_info "Running integration tests..."
+    nix run .#test-integration
+}
+
+dev_multiarch() {
+    log_info "Building multi-architecture images..."
+    nix run .#build-multiarch
 }
 
 show_help() {
@@ -192,16 +247,23 @@ Commands:
   lint          Run linting and formatting
   clean         Clean development artifacts
   security      Run security checks
-  deploy        Deploy ClewdR (docker|nixos|vm)
+  deploy        Deploy ClewdR (docker|nixos|vm|k8s|helm|staging|production)
   ci            Run CI pipeline locally
   secrets       Manage secrets (init|encrypt|decrypt|edit)
+  profile       Performance profiling (cpu|memory|flamegraph|benchstat)
+  integration   Run integration tests
+  multiarch     Build multi-architecture images
   help          Show this help message
 
 Examples:
   $0 setup                    # Setup development environment
   $0 watch                    # Start auto-rebuilding
   $0 test                     # Run all tests
-  $0 deploy docker            # Deploy with Docker
+  $0 deploy k8s               # Deploy to Kubernetes
+  $0 deploy staging           # Deploy to staging environment
+  $0 profile cpu              # Run CPU profiling
+  $0 integration              # Run integration tests
+  $0 multiarch                # Build multi-arch containers
   $0 secrets init             # Initialize secrets management
   $0 security                 # Run security audit
 
@@ -223,6 +285,9 @@ main() {
         "deploy") shift; dev_deploy "$@" ;;
         "ci") dev_ci ;;
         "secrets") dev_secrets "$@" ;;
+        "profile") dev_profile "$@" ;;
+        "integration") dev_integration ;;
+        "multiarch") dev_multiarch ;;
         "help"|"-h"|"--help") show_help ;;
         *)
             log_error "Unknown command: $1"

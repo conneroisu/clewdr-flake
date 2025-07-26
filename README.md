@@ -1,20 +1,31 @@
-# ClewdR NixOS Package & Module
+# ClewdR NixOS Flake
 
-A complete NixOS flake providing a package and service module for [ClewdR](https://github.com/Xerxes-2/clewdr) - a high-performance LLM proxy for Claude and Google Gemini.
+A comprehensive production-ready NixOS flake for [ClewdR](https://github.com/Xerxes-2/clewdr) - a high-performance LLM proxy for Claude and Google Gemini APIs. This flake provides complete package building, service management, container deployment, and development tooling.
+
+## ✨ Features
+
+- 🚀 **Complete NixOS Integration** - Package, service module, and system configuration
+- 🐳 **Container Support** - Docker, Kubernetes, and multi-architecture builds  
+- 📊 **Development Tools** - Full development environment with profiling and testing
+- 🔒 **Production Ready** - Security hardening, monitoring, and automated deployment
+- 🛠️ **Developer Experience** - IDE integration, pre-commit hooks, and automated workflows
 
 ## 🚀 Quick Start
 
 ### Using the Flake
 
 ```bash
+# Run ClewdR directly
+nix run github:your-username/clewdr-flake
+
 # Build the package
 nix build github:your-username/clewdr-flake#clewdr
 
-# Run directly
-nix run github:your-username/clewdr-flake#clewdr
-
-# Enter development shell
+# Enter full development environment
 nix develop github:your-username/clewdr-flake
+
+# Build container image
+nix build github:your-username/clewdr-flake#container
 ```
 
 ### NixOS Service Configuration
@@ -64,20 +75,25 @@ Then configure the service in your `configuration.nix`:
 
 ## 📦 What's Included
 
-### Package Features
-- ✅ **Full NixOS compatibility** - Properly packaged with all dependencies
-- ✅ **Rust + React frontend** - Complete build of both backend and web UI
-- ✅ **Cross-platform support** - Works on x86_64 and aarch64 Linux/macOS
-- ✅ **TLS security** - Uses rustls instead of BoringSSL for better compatibility
-- ✅ **Filesystem-aware** - Respects NixOS read-only store and service directories
+### Core Components
+- **📦 NixOS Package** - ClewdR built with reqwest HTTP client for compatibility
+- **⚙️ NixOS Module** - Complete service configuration with security hardening
+- **🐳 Container Images** - Docker and OCI-compatible images with multi-arch support
+- **☸️ Kubernetes Deployment** - Production-ready manifests and Helm charts
+- **🔄 GitOps Integration** - Kustomize and ArgoCD configurations
 
-### NixOS Module Features
-- 🔒 **Security hardened** - Systemd service with appropriate restrictions
-- 🔧 **Fully configurable** - All ClewdR options exposed as NixOS options
-- 👤 **User management** - Automatic service user and group creation
-- 🔥 **Firewall integration** - Optional automatic firewall rule configuration
-- 📁 **Data directory management** - Proper handling of configuration and logs
-- 🔐 **Secret management** - Secure handling of API keys via environment files
+### Development Environment
+- **🛠️ Full Toolchain** - Rust, Node.js, security tools, and profiling utilities
+- **🔍 IDE Integration** - VS Code configuration with debugging support
+- **🧪 Testing Framework** - Unit tests, integration tests, and security scanning
+- **📊 Performance Tools** - CPU/memory profiling, benchmarking, and flame graphs
+- **🔒 Security Tools** - Dependency auditing, license compliance, and secrets management
+
+### Deployment Options
+- **🖥️ NixOS Service** - Native systemd service with full integration
+- **🐳 Docker Containers** - Optimized layered images for production
+- **☸️ Kubernetes** - Complete manifests with auto-scaling and monitoring
+- **🔄 GitOps** - Automated deployment with staging and production environments
 
 ## 🛠️ Technical Details
 
@@ -167,6 +183,48 @@ services.clewdr = {
 }
 ```
 
+## 🐳 Container Deployment
+
+### Docker
+
+```bash
+# Build container image
+nix build .#container
+
+# Load and run
+docker load < result
+docker run -p 8484:8484 -e ANTHROPIC_API_KEY=your_key clewdr:latest
+
+# Or use multi-arch build
+nix run .#build-multiarch
+docker run -p 8484:8484 clewdr:latest-amd64
+```
+
+### Kubernetes
+
+```bash
+# Deploy to Kubernetes
+kubectl apply -f k8s/deployment.yaml
+
+# Or use Helm
+helm install clewdr k8s/helm-chart/
+
+# GitOps with Kustomize
+kubectl apply -k gitops/environments/staging/
+kubectl apply -k gitops/environments/production/
+```
+
+### Development Utilities
+
+```bash
+# All deployment options via dev-utils.sh
+./dev-utils.sh deploy docker        # Docker Compose
+./dev-utils.sh deploy k8s           # Kubernetes
+./dev-utils.sh deploy helm          # Helm chart
+./dev-utils.sh deploy staging       # Staging environment
+./dev-utils.sh deploy production    # Production environment
+```
+
 ## 🔌 API Endpoints
 
 Once running, ClewdR exposes several endpoints:
@@ -179,39 +237,91 @@ Once running, ClewdR exposes several endpoints:
 
 ## 🔧 Development
 
-### Building from Source
+### Quick Development Setup
 
 ```bash
 # Clone the repository
 git clone https://github.com/your-username/clewdr-flake
 cd clewdr-flake
 
-# Enter development environment
-nix develop
+# Setup development environment
+./dev-utils.sh setup
 
-# Build the package
-nix build .#clewdr
+# Start development with auto-rebuild
+./dev-utils.sh watch
 
-# Run tests
-nix flake check
+# Run comprehensive tests
+./dev-utils.sh test
+```
+
+### Available Applications
+
+```bash
+# Development tools
+nix run .#dev-watch              # Auto-rebuild on changes
+nix run .#dev-env                # Setup development environment
+
+# Testing and quality
+nix run .#security-audit         # Security vulnerability scanning
+nix run .#test-integration       # Integration testing suite
+nix run .#test-ci                # Local CI pipeline testing
+
+# Performance analysis
+nix run .#profile cpu            # CPU profiling with perf
+nix run .#profile memory         # Memory profiling with valgrind
+nix run .#profile flamegraph     # Generate flame graphs
+nix run .#bench                  # Performance benchmarking
+
+# Container and deployment
+nix run .#container-build        # Build container images
+nix run .#build-multiarch        # Multi-architecture builds
+nix run .#deploy                 # Container deployment
+
+# Documentation and utilities
+nix run .#docs                   # Generate documentation
+nix run .#secrets                # Secrets management
+```
+
+### Development Shells
+
+```bash
+# Full development environment (default)
+nix develop                      # Complete toolchain + all utilities
+
+# Specialized environments
+nix develop .#minimal            # Essential tools only
+nix develop .#pre-commit         # Code quality environment
 ```
 
 ### File Structure
 ```
-├── flake.nix                    # Main flake definition
-├── package.nix                  # Package build configuration  
-├── module.nix                   # NixOS service module
-├── README.md                    # Main documentation
-├── CHANGELOG.md                 # Release history
-├── LICENSE                      # License information
-├── tests/
-│   └── nixos-test.nix          # VM integration tests
-├── upstream-source/
-│   └── clewdr-source/          # Patched ClewdR source code
-├── source-patches/             # Compatibility patches
-├── docs/                       # Additional documentation
-├── development-notes/          # Development artifacts
-└── build-artifacts/            # Build-related files
+├── 📁 Core Configuration
+│   ├── flake.nix                # Main flake with 16 applications & 4 shells
+│   ├── package.nix              # Package build with reqwest migration
+│   ├── module.nix               # NixOS service module
+│   └── dev-utils.sh             # Development workflow management
+├── 📁 Container & Orchestration
+│   ├── k8s/                     # Kubernetes manifests and Helm chart
+│   ├── gitops/                  # Kustomize and ArgoCD configurations
+│   └── monitoring/              # Prometheus rules and configurations
+├── 📁 Development & Testing
+│   ├── tests/                   # NixOS VM and performance tests
+│   ├── .vscode/                 # IDE configuration and debugging
+│   ├── .pre-commit-config.yaml  # Code quality automation
+│   └── deny.toml                # Dependency policy enforcement
+├── 📁 Documentation
+│   ├── README.md                # Main documentation (this file)
+│   ├── ENHANCEMENT-SUMMARY.md   # Complete feature overview
+│   ├── docs/                    # Additional documentation
+│   └── examples/                # Usage examples and configurations
+├── 📁 Source & Build
+│   ├── upstream-source/         # Patched ClewdR source code
+│   ├── source-patches/          # HTTP client compatibility patches
+│   └── scripts/                 # CI and verification scripts
+└── 📁 Generated (gitignored)
+    ├── result*                  # Nix build outputs
+    ├── profiles/                # Performance profiling data
+    └── docs/book/               # Generated documentation
 ```
 
 ## 🐛 Troubleshooting

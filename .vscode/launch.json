@@ -1,0 +1,81 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug ClewdR",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=clewdr",
+          "--package=clewdr"
+        ],
+        "filter": {
+          "name": "clewdr",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        {
+          "name": "RUST_LOG",
+          "value": "debug"
+        },
+        {
+          "name": "RUST_BACKTRACE",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug ClewdR Tests",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=clewdr",
+          "--package=clewdr"
+        ],
+        "filter": {
+          "name": "clewdr",
+          "kind": "bin"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "environment": [
+        {
+          "name": "RUST_LOG",
+          "value": "debug"
+        },
+        {
+          "name": "RUST_BACKTRACE",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "type": "lldb",
+      "request": "launch", 
+      "name": "Debug Unit Tests",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--lib",
+          "--package=clewdr"
+        ],
+        "filter": {
+          "name": "clewdr",
+          "kind": "lib"
+        }
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

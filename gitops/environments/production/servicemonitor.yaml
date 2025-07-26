@@ -1,0 +1,63 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: clewdr-service-monitor
+  namespace: clewdr-production
+  labels:
+    app: clewdr
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: clewdr
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
+  namespaceSelector:
+    matchNames:
+    - clewdr-production
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: clewdr-prometheus-rules
+  namespace: clewdr-production
+  labels:
+    app: clewdr
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: clewdr.rules
+    rules:
+    - alert: ClewdrHighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="clewdr"}[5m])) > 2
+      for: 5m
+      labels:
+        severity: warning
+        service: clewdr
+      annotations:
+        summary: "ClewdR high latency detected"
+        description: "95th percentile latency is {{ $value }}s for ClewdR service"
+    
+    - alert: ClewdrHighErrorRate
+      expr: rate(http_requests_total{job="clewdr",status=~"5.."}[5m]) / rate(http_requests_total{job="clewdr"}[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: critical
+        service: clewdr
+      annotations:
+        summary: "ClewdR high error rate"
+        description: "Error rate is {{ $value | humanizePercentage }} for ClewdR service"
+    
+    - alert: ClewdrPodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{container="clewdr"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+        service: clewdr
+      annotations:
+        summary: "ClewdR pod crash looping"
+        description: "ClewdR pod {{ $labels.pod }} is crash looping"

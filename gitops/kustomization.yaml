@@ -1,0 +1,75 @@
+# ClewdR GitOps Base Configuration
+# Provides common Kustomize configuration shared across environments
+# Follows Kubernetes recommended labels and GitOps best practices
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: clewdr-gitops
+
+# Base Kubernetes manifests to customize
+# References the core deployment configuration
+resources:
+  - ../k8s/deployment.yaml
+
+# Standard Kubernetes labels applied to all resources
+# Enables proper resource discovery and management
+commonLabels:
+  app.kubernetes.io/name: clewdr                    # Application name
+  app.kubernetes.io/component: llm-proxy           # Component type
+  app.kubernetes.io/part-of: clewdr-platform       # Platform grouping
+  app.kubernetes.io/managed-by: kustomize          # Management tool
+
+# Metadata annotations for GitOps tracking and management
+commonAnnotations:
+  config.kubernetes.io/local-config: "false"  # Enable GitOps management
+  deployment.kubernetes.io/revision: "1"      # Track deployment revisions
+
+# Target namespace for all generated resources
+# Creates isolated environment for ClewdR deployment
+namespace: clewdr
+
+# Container image configuration for version management
+# Allows environment-specific image tags through overlays
+images:
+  - name: clewdr
+    newTag: latest
+    
+# Dynamic configuration generation for application settings
+# Creates ConfigMap with environment-specific values
+configMapGenerator:
+  - name: clewdr-config
+    literals:
+      - RUST_LOG=info        # Application logging level
+      - CLEWDR_HOST=0.0.0.0  # Bind to all interfaces
+      - CLEWDR_PORT=8484     # Standard ClewdR port
+
+# Secure secret generation for sensitive configuration
+# Files should be encrypted with sops for GitOps security
+secretGenerator:
+  - name: clewdr-secrets
+    type: Opaque
+    files:
+      - secrets.env  # Contains encrypted API keys and credentials
+
+# Patches for environment-specific customizations
+patches:
+  - target:
+      kind: Deployment
+      name: clewdr
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom
+        value:
+          - configMapRef:
+              name: clewdr-config
+          - secretRef:
+              name: clewdr-secrets
+
+# Resource transformers
+replicas:
+  - name: clewdr
+    count: 3
