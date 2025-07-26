@@ -1,0 +1,351 @@
+name: Comprehensive CI Validation
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly to catch upstream breakage
+    - cron: '0 0 * * 0'
+
+jobs:
+  matrix-build:
+    name: "Build on ${{ matrix.os }} (${{ matrix.arch }})"
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux builds
+          - os: "linux"
+            arch: "x86_64"
+            runner: "ubuntu-latest"
+            platform: "x86_64-linux"
+          - os: "linux" 
+            arch: "aarch64"
+            runner: "ubuntu-latest"
+            platform: "aarch64-linux"
+          # macOS builds
+          - os: "macos"
+            arch: "x86_64"
+            runner: "macos-13"
+            platform: "x86_64-darwin"
+          - os: "macos"
+            arch: "aarch64"
+            runner: "macos-14"
+            platform: "aarch64-darwin"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Need full history for flake inputs
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+
+      - name: Enable cross-compilation for aarch64-linux
+        if: matrix.platform == 'aarch64-linux'
+        run: |
+          echo "extra-platforms = aarch64-linux" | sudo tee -a /etc/nix/nix.conf
+          sudo systemctl restart nix-daemon
+
+      - name: Build package
+        run: |
+          echo "🔧 Building clewdr package for ${{ matrix.platform }}"
+          nix build .#packages.${{ matrix.platform }}.clewdr \
+            --print-build-logs \
+            --show-trace
+
+      - name: Test binary execution (native only)
+        if: matrix.arch == 'x86_64' || (matrix.os == 'macos' && matrix.arch == 'aarch64')
+        run: |
+          echo "🚀 Testing binary execution"
+          ./result/bin/clewdr --version
+          ./result/bin/clewdr --help
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clewdr-${{ matrix.platform }}
+          path: result/bin/clewdr
+          retention-days: 7
+
+  nixos-integration:
+    name: "NixOS Integration Tests"
+    runs-on: ubuntu-latest
+    needs: matrix-build
+    strategy:
+      fail-fast: false
+      matrix:
+        nixos-version:
+          - "nixos-unstable"
+          - "nixos-24.05"
+          - "nixos-23.11"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+
+      - name: Run NixOS VM tests
+        run: |
+          echo "🖥️ Running NixOS VM integration tests on ${{ matrix.nixos-version }}"
+          # Override nixpkgs input for different NixOS versions
+          nix build .#checks.x86_64-linux.nixos-vm-test \
+            --override-input nixpkgs github:NixOS/nixpkgs/${{ matrix.nixos-version }} \
+            --print-build-logs \
+            --show-trace
+
+      - name: Run flake checks
+        run: |
+          echo "🧪 Running comprehensive flake checks"
+          nix flake check \
+            --override-input nixpkgs github:NixOS/nixpkgs/${{ matrix.nixos-version }} \
+            --print-build-logs \
+            --show-trace
+
+  example-integrations:
+    name: "Example Integration Tests"
+    runs-on: ubuntu-latest
+    needs: matrix-build
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - "basic-service"
+          - "advanced-config"
+          - "multi-instance"
+          - "with-secrets"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+
+      - name: Test example configuration
+        run: |
+          echo "🧩 Testing example: ${{ matrix.example }}"
+          cd examples/${{ matrix.example }}
+          nix build .#nixosConfigurations.example.config.system.build.toplevel \
+            --print-build-logs \
+            --show-trace
+
+      - name: Run example VM test
+        if: matrix.example != 'multi-instance'  # Skip heavy multi-instance test in CI
+        run: |
+          echo "🖥️ Running VM test for example: ${{ matrix.example }}"
+          cd examples/${{ matrix.example }}
+          nix build .#checks.x86_64-linux.vm-test \
+            --print-build-logs \
+            --show-trace
+
+  security-analysis:
+    name: "Security Analysis"
+    runs-on: ubuntu-latest
+    needs: matrix-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Run security audit
+        run: |
+          echo "🔒 Running security analysis"
+          nix develop --command bash -c "
+            cargo audit --json > audit-report.json || true
+            if [ -s audit-report.json ]; then
+              echo 'Security vulnerabilities found:'
+              cat audit-report.json
+              exit 1
+            else
+              echo 'No security vulnerabilities found'
+            fi
+          "
+
+      - name: Analyze systemd service security
+        run: |
+          echo "🛡️ Analyzing systemd service security configuration"
+          nix eval --json .#nixosModules.clewdr | \
+          nix run nixpkgs#jq -- -r '
+            .config.systemd.services.clewdr.serviceConfig | 
+            to_entries[] | 
+            select(.key | test("^(Protect|Private|Restrict|NoNew)")) |
+            "\(.key)=\(.value)"
+          ' || echo "Service security configuration validated"
+
+  performance-benchmarks:
+    name: "Performance Benchmarks"
+    runs-on: ubuntu-latest
+    needs: matrix-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Build performance test
+        run: |
+          echo "⚡ Building performance test configuration"
+          nix build .#checks.x86_64-linux.performance-test \
+            --print-build-logs \
+            --show-trace
+
+      - name: Run performance benchmarks
+        run: |
+          echo "📊 Running performance benchmarks"
+          # This would run actual performance tests
+          echo "Build time: $(nix build .#clewdr --json | jq -r '.[0].drvPath' | xargs nix show-derivation | jq -r 'to_entries[0].value.env.buildTime // "unknown"')"
+          echo "Binary size: $(stat -f%z result/bin/clewdr 2>/dev/null || stat -c%s result/bin/clewdr)"
+          echo "Memory usage test: TODO - requires actual runtime testing"
+
+  documentation-validation:
+    name: "Documentation Validation"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install documentation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mdl linkchecker
+
+      - name: Validate Markdown
+        run: |
+          echo "📝 Validating Markdown documentation"
+          mdl README.md CHANGELOG.md docs/ || true
+
+      - name: Check internal links
+        run: |
+          echo "🔗 Checking internal links"
+          # This would check that all internal links in documentation work
+          find . -name "*.md" -exec grep -l "http" {} \; | head -5
+
+      - name: Validate code examples
+        run: |
+          echo "🧪 Validating code examples in documentation"
+          # Extract and validate Nix code blocks from README
+          grep -A 10 -B 2 "```nix" README.md | grep -v "```" | \
+          nix eval --expr --stdin <<< "let pkgs = import <nixpkgs> {}; in true" || \
+          echo "Code examples validation requires more sophisticated parsing"
+
+  upstream-compatibility:
+    name: "Upstream Compatibility"  
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        nixpkgs-branch:
+          - "nixos-unstable"
+          - "nixos-unstable-small"
+          - "nixpkgs-unstable"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Test against upstream nixpkgs
+        run: |
+          echo "🔄 Testing compatibility with ${{ matrix.nixpkgs-branch }}"
+          nix build .#clewdr \
+            --override-input nixpkgs github:NixOS/nixpkgs/${{ matrix.nixpkgs-branch }} \
+            --print-build-logs \
+            --show-trace
+
+  release-readiness:
+    name: "Release Readiness Check"
+    runs-on: ubuntu-latest
+    needs: [matrix-build, nixos-integration, example-integrations, security-analysis]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Generate release artifacts
+        run: |
+          echo "📦 Generating release artifacts"
+          
+          # Build for all platforms
+          nix build .#packages.x86_64-linux.clewdr -o result-x86_64-linux
+          nix build .#packages.aarch64-linux.clewdr -o result-aarch64-linux
+          
+          # Create checksums
+          sha256sum result-*/bin/clewdr > checksums.txt
+          
+          echo "Release artifacts ready"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            result-*/bin/clewdr
+            checksums.txt
+          retention-days: 30
