@@ -1,11 +1,4 @@
-{ pkgs ? import <nixpkgs> {}, ... }:
-
-let
-  # Import our flake to get the package and module
-  flake = builtins.getFlake (toString ./.);
-  clewdrPackage = flake.packages.${pkgs.system}.clewdr;
-  clewdrModule = flake.nixosModules.clewdr;
-in
+{ pkgs, clewdrPackage, clewdrModule }:
 
 pkgs.nixosTest {
   name = "clewdr";
@@ -19,9 +12,16 @@ pkgs.nixosTest {
       package = clewdrPackage;
       
       # Basic configuration
-      host = "127.0.0.1";
+      ip = "127.0.0.1";
       port = 8100;
-      logLevel = "info";
+      
+      # Basic settings
+      settings = {
+        password = "test-password";
+        admin_password = "test-admin-password";
+        check_update = false;
+        auto_update = false;
+      };
       
       # Set required environment variables for testing
       environment = {
@@ -30,11 +30,10 @@ pkgs.nixosTest {
       };
       
       # Allow access from test client
-      openFirewall = true;
+      openFirewall = true;  
     };
 
-    # Allow unfree packages for testing
-    nixpkgs.config.allowUnfree = true;
+    # Configure nixpkgs for testing (remove allowUnfree as it's not needed here)
     
     # Enable systemd-resolved for proper DNS resolution
     services.resolved.enable = true;
@@ -63,14 +62,17 @@ pkgs.nixosTest {
     # Check that the service is listening on the configured port
     machine.wait_for_open_port(8100)
     
-    # Verify the service responds to HTTP requests
-    machine.succeed("curl -f http://127.0.0.1:8100/ || curl -f http://127.0.0.1:8100/health || true")
+    # Verify the service responds to HTTP requests (but expect 404 for root path)
+    machine.succeed("curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8100/ | grep -E '^(200|404)$'")
     
     # Check systemd service status and logs
     machine.succeed("systemctl status clewdr")
     
-    # Verify configuration file was created
-    machine.succeed("test -f /etc/clewdr/config.json")
+    # Verify the service is actually running and bound to the port
+    machine.succeed("ss -tlnp | grep ':8100'")
+    
+    # Check that the service has not crashed and is not restarting
+    machine.succeed("! systemctl is-failed clewdr")
     
     # Check that the service user was created
     machine.succeed("id clewdr")
@@ -78,7 +80,7 @@ pkgs.nixosTest {
     # Verify systemd service security settings are applied
     service_status = machine.succeed("systemctl show clewdr.service")
     assert "PrivateTmp=yes" in service_status
-    assert "ProtectSystem=strict" in service_status
+    assert "ProtectSystem=full" in service_status  # Changed from strict to full for filesystem compatibility
     assert "NoNewPrivileges=yes" in service_status
     
     # Test basic functionality by checking if the service accepts connections

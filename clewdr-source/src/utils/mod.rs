@@ -14,12 +14,18 @@ pub fn enabled(flag: bool) -> ColoredString {
     }
 }
 
-/// Gets and sets up the configuration directory for the application
-///
-/// In dev, uses the current working directory
-/// In production, uses the directory of the executable
-/// Also creates the log directory if it doesn't exist
-///
+/// Sets the ClewdR directory for configuration and data files.  
+/// Also creates the log directory if it doesn't exist.
+/// In production, this respects environment variables for directory override
+/// to support NixOS and other system service configurations.
+/// 
+/// In development, uses the cargo manifest directory.
+/// In production, checks environment variables first, then falls back to executable directory.
+/// 
+/// # Environment Variables
+/// * `CLEWDR_DIR` - Override the default directory location
+/// * `CLEWDR_DATA_DIR` - Alternative override for data directory
+/// 
 /// # Returns
 /// * `Result<PathBuf, ClewdrError>` - The path to the configuration directory on success, or an error
 pub fn set_clewdr_dir() -> Result<PathBuf, ClewdrError> {
@@ -28,16 +34,29 @@ pub fn set_clewdr_dir() -> Result<PathBuf, ClewdrError> {
         let cargo_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         cargo_dir.canonicalize()?
     } else {
-        // In production use the directory of the executable
-        std::env::current_exe()?
-            .parent()
-            .ok_or_else(|| ClewdrError::PathNotFound {
-                msg: "Failed to get parent directory".to_string(),
-            })?
-            .canonicalize()?
-            .to_path_buf()
+        // Check for environment variable overrides first (for NixOS/systemd services)
+        if let Ok(env_dir) = std::env::var("CLEWDR_DIR") {
+            PathBuf::from(env_dir)
+        } else if let Ok(env_dir) = std::env::var("CLEWDR_DATA_DIR") {
+            PathBuf::from(env_dir)
+        } else {
+            // Fallback to executable directory
+            std::env::current_exe()?
+                .parent()
+                .ok_or_else(|| ClewdrError::PathNotFound {
+                    msg: "Failed to get parent directory".to_string(),
+                })?
+                .canonicalize()?
+                .to_path_buf()
+        }
     };
-    std::env::set_current_dir(&dir)?;
+    
+    // Only try to change directory if it's writable, otherwise just use the dir path
+    if let Err(_) = std::env::set_current_dir(&dir) {
+        // If we can't change to the directory (e.g., read-only filesystem like Nix store),
+        // just continue with the current working directory and log a warning
+        eprintln!("Warning: Could not change to directory {}, using current directory", dir.display());
+    }
     // create log dir
     #[cfg(feature = "no_fs")]
     {

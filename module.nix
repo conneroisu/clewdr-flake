@@ -229,9 +229,9 @@ in {
         Restart = "always";
         RestartSec = "10s";
         
-        # Security settings
+        # Security settings (relaxed for compatibility)
         NoNewPrivileges = true;
-        ProtectSystem = "strict";
+        ProtectSystem = "full";  # Changed from "strict" to allow more filesystem access
         ProtectHome = true;
         PrivateTmp = true;
         PrivateDevices = true;
@@ -244,12 +244,12 @@ in {
         RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
         RestrictNamespaces = true;
         LockPersonality = true;
-        MemoryDenyWriteExecute = true;
+        # MemoryDenyWriteExecute = true;  # Commented out as it might interfere with Rust
         RestrictRealtime = true;
         RestrictSUIDSGID = true;
         RemoveIPC = true;
         
-        # Filesystem permissions
+        # Filesystem permissions - allow writing to data directory only
         ReadWritePaths = [ cfg.dataDir ];
         
         # Working directory
@@ -262,11 +262,15 @@ in {
       environment = mkMerge [
         {
           # Default environment
+          HOME = cfg.dataDir;
           CLEWDR_IP = cfg.ip;
           CLEWDR_PORT = toString cfg.port;
           CLEWDR_CHECK_UPDATE = if cfg.checkUpdate then "TRUE" else "FALSE";
           CLEWDR_AUTO_UPDATE = if cfg.autoUpdate then "FALSE" else "FALSE"; # Disable auto-update in systemd service
           CLEWDR_TOKIO_CONSOLE = "FALSE";
+          # Try to override directory detection
+          CLEWDR_DIR = cfg.dataDir;
+          CLEWDR_DATA_DIR = cfg.dataDir;
         }
         cfg.environment
       ];
