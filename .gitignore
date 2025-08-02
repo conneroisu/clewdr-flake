@@ -78,3 +78,17 @@ build-artifacts/cargo-patch.*
 # Local development configuration
 .local/
 .devcontainer/local/
+
+# Claude Code artifacts
+.claude/settings.json
+.claude/hooks/node_modules/
+.claude/hooks/dist/
+
+# Pre-commit artifacts
+.pre-commit-config.yaml.backup
+
+# Additional security
+*.enc
+.secrets/
+.env.production
+.env.staging

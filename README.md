@@ -16,16 +16,16 @@ A comprehensive production-ready NixOS flake for [ClewdR](https://github.com/Xer
 
 ```bash
 # Run ClewdR directly
-nix run github:your-username/clewdr-flake
+nix run github:conneroisu/clewdr-flake
 
 # Build the package
-nix build github:your-username/clewdr-flake#clewdr
+nix build github:conneroisu/clewdr-flake#clewdr
 
 # Enter full development environment
-nix develop github:your-username/clewdr-flake
+nix develop github:conneroisu/clewdr-flake
 
 # Build container image
-nix build github:your-username/clewdr-flake#container
+nix build github:conneroisu/clewdr-flake#container
 ```
 
 ### NixOS Service Configuration
@@ -34,7 +34,7 @@ Add to your `flake.nix`:
 
 ```nix
 {
-  inputs.clewdr-flake.url = "github:your-username/clewdr-flake";
+  inputs.clewdr-flake.url = "github:conneroisu/clewdr-flake";
   
   outputs = { self, nixpkgs, clewdr-flake }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
@@ -241,7 +241,7 @@ Once running, ClewdR exposes several endpoints:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/clewdr-flake
+git clone https://github.com/conneroisu/clewdr-flake
 cd clewdr-flake
 
 # Setup development environment
@@ -356,5 +356,6 @@ This packaging is provided under the same license as the original ClewdR project
 ## 🔗 Links
 
 - [Original ClewdR Repository](https://github.com/Xerxes-2/clewdr)
+- [This Flake Repository](https://github.com/conneroisu/clewdr-flake)
 - [NixOS Manual](https://nixos.org/manual/nixos/stable/)  
 - [Nix Package Manager](https://nixos.org/manual/nix/stable/)
